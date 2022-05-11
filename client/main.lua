@@ -137,6 +137,33 @@ RegisterNetEvent('ox_property:storeVehicle', function(data)
 	end
 end)
 
+RegisterNetEvent('ox_property:retrieveVehicle', function(data)
+	if currentZone.property == data.property and currentZone.id == data.zoneId then
+		local entities = {}
+		local zone = currentZone.polygon or currentZone.box or currentZone.sphere
+
+		local peds = GetGamePool('CPed')
+		for i = 1, #peds do
+			local ped = peds[i]
+			local pedCoords = GetEntityCoords(ped)
+			if zone.contains(zone, pedCoords) then
+				entities[#entities + 1] = pedCoords
+			end
+		end
+
+		local vehicles = GetGamePool('CVehicle')
+		for i = 1, #vehicles do
+			local vehicle = vehicles[i]
+			local vehicleCoords = GetEntityCoords(vehicle)
+			if zone.contains(zone, vehicleCoords) then
+				entities[#entities + 1] = vehicleCoords
+			end
+		end
+
+		TriggerServerEvent('ox_property:retrieveVehicle', data.plate, data.property, data.zoneId, entities)
+	end
+end)
+
 RegisterNetEvent('ox_property:vehicleList', function(data)
 	if currentZone.property == data.property and currentZone.id == data.zoneId then
 		local options = {}
@@ -151,7 +178,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 			local subOptions = {}
 			if data.zoneOnly or vehicle.stored == ('%s:%s'):format(data.property, data.zoneId) then
 				subOptions['Retrieve'] = {
-					serverEvent = 'ox_property:retrieveVehicle',
+					event = 'ox_property:retrieveVehicle',
 					args = {
 						plate = vehicle.plate,
 						property = currentZone.property,

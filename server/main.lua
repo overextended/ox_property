@@ -33,7 +33,6 @@ for i = 1, #sets do
 	for k, v in pairs(propertyData) do
 		properties[k] = v
 	end
-	-- print(json.encode(set, {indent=true}))
 	ready = true
 end
 
@@ -106,20 +105,30 @@ local function shuffle(tbl)
 	return tbl
 end
 
-RegisterServerEvent('ox_property:retrieveVehicle', function(data)
+local function isPointClear(point, entities)
+	for i = 1, #entities do
+		local entity = entities[i]
+		if #(point - entity) < 2.5 then
+			return false
+		end
+	end
+	return true
+end
+
+RegisterServerEvent('ox_property:retrieveVehicle', function(plate, property, zoneId, entities)
 	local source = source
 	local player = exports.ox_core:getPlayer(source)
-	local zone = properties[data.property].zones[data.zoneId]
-	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {data.plate, player.charid})
+	local zone = properties[property].zones[zoneId]
+	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {plate, player.charid})
 
 	local spawns = shuffle(zone.spawns)
 	local spawn
 	for i = 1, #spawns do
 		local point = spawns[i]
-		-- if pointClear then
+		if isPointClear(point.xyz, entities) then
 			spawn = vec(point.xyz, point.w + rotate[math.random(2)])
 			break
-		-- end
+		end
 	end
 
 	if vehicle and spawn then
