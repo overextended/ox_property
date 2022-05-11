@@ -62,6 +62,19 @@ CreateThread(function()
 					onExit = onExit
 				})
 			end
+
+			if zone.disableGenerators then
+				local point1, point2
+				if zone.sphere then
+					point1, point2 = glm.sphere.maximalContainedAABB(zoneData.coords, zoneData.radius)
+				else
+					local verticalOffset = vec(0, 0, zoneData.thickness / 2)
+					point1, point2 = zoneData.polygon:minimalEnclosingAABB()
+					point1 -= verticalOffset
+					point2 += verticalOffset
+				end
+				SetAllVehicleGeneratorsActiveInArea(point1.x, point1.y, point1.z, point2.x, point2.y, point2.z, false, false)
+			end
 		end
 	end
 end)

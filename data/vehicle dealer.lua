@@ -17,6 +17,7 @@ return {
 				name = 'Showroom',
 				type = 'showroom',
 				vehicles = {'automobile', 'bike'},
+				disableGenerators = true,
 				points = {
 					vec(-37.8, -1094.4, 26.5),
 					vec(-33.0, -1100.2, 26.5),
