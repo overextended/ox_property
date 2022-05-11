@@ -21,24 +21,47 @@ CreateThread(function()
 				name = zone.name,
 				type = zone.type
 			}
-			lib.zones.poly({
-				points = zone.points,
-				debug = true,
-				onEnter = function()
-					currentZone = zoneData
-					lib.notify({
-						title = k,
-						description = zone.name,
-						duration = 5000,
-						position = 'top'
-					})
-				end,
-				onExit = function()
-					if table.matches(currentZone, zoneData) then
-						currentZone = {}
-					end
-				end,
-			})
+			local onEnter = function()
+				currentZone = zoneData
+				lib.notify({
+					title = k,
+					description = zone.name,
+					duration = 5000,
+					position = 'top'
+				})
+			end
+			local onExit = function()
+				if table.matches(currentZone, zoneData) then
+					currentZone = {}
+				end
+			end
+
+			if zone.points then
+				zoneData.polygon = lib.zones.poly({
+					points = zone.points,
+					thickness = zone.thickness,
+					debug = true,
+					onEnter = onEnter,
+					onExit = onExit
+				})
+			elseif zone.box then
+				zoneData.box = lib.zones.box({
+					coords = zone.coords,
+					rotation = zone.rotation,
+					size = zone.size or vec3(2),
+					debug = true,
+					onEnter = onEnter,
+					onExit = onExit
+				})
+			elseif zone.sphere then
+				zoneData.sphere = lib.zones.sphere({
+					coords = zone.coords,
+					radius = zone.radius,
+					debug = true,
+					onEnter = onEnter,
+					onExit = onExit
+				})
+			end
 		end
 	end
 end)
