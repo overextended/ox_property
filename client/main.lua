@@ -124,14 +124,16 @@ end)
 RegisterKeyMapping('openZone', 'Zone Menu', 'keyboard', 'e')
 
 RegisterNetEvent('ox_property:storeVehicle', function(data)
-	if cache.vehicle then
-		if cache.seat == -1 then
-			TriggerServerEvent('ox_property:storeVehicle', VehToNet(cache.vehicle), data.property, data.zoneId)
+	if currentZone.property == data.property and currentZone.id == data.zoneId then
+		if cache.vehicle then
+			if cache.seat == -1 then
+				TriggerServerEvent('ox_property:storeVehicle', VehToNet(cache.vehicle), data.property, data.zoneId)
+			else
+				lib.notify({title = "You are not in the driver's seat", type = 'error'})
+			end
 		else
-			lib.notify({title = "You are not in the driver's seat", type = 'error'})
+			lib.notify({title = 'You are not in a vehicle', type = 'error'})
 		end
-	else
-		lib.notify({title = 'You are not in a vehicle', type = 'error'})
 	end
 end)
 
