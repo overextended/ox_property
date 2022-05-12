@@ -15,51 +15,63 @@ CreateThread(function()
 
 		for i = 1, #v.zones do
 			local zone = v.zones[i]
-			local zoneData = {
-				property = k,
-				id = i,
-				name = zone.name,
-				type = zone.type
-			}
-			local onEnter = function()
-				currentZone = zoneData
+			local onEnter = function(self)
+				currentZone = self
 				lib.notify({
-					title = k,
-					description = zone.name,
+					title = self.property,
+					description = self.name,
 					duration = 5000,
 					position = 'top'
 				})
 			end
-			local onExit = function()
-				if table.matches(currentZone, zoneData) then
+			local onExit = function(self)
+				if currentZone.property == self.property and currentZone.id == self.id then
 					currentZone = {}
 				end
 			end
 
 			if zone.points then
-				zoneData.polygon = lib.zones.poly({
+				zoneData = lib.zones.poly({
 					points = zone.points,
 					thickness = zone.thickness,
 					debug = true,
+
 					onEnter = onEnter,
-					onExit = onExit
+					onExit = onExit,
+
+					property = k,
+					id = i,
+					name = zone.name,
+					type = zone.type,
 				})
 			elseif zone.box then
-				zoneData.box = lib.zones.box({
+				zoneData = lib.zones.box({
 					coords = zone.coords,
 					rotation = zone.rotation,
 					size = zone.size or vec3(2),
 					debug = true,
+
 					onEnter = onEnter,
-					onExit = onExit
+					onExit = onExit,
+
+					property = k,
+					id = i,
+					name = zone.name,
+					type = zone.type,
 				})
 			elseif zone.sphere then
-				zoneData.sphere = lib.zones.sphere({
+				zoneData = lib.zones.sphere({
 					coords = zone.coords,
 					radius = zone.radius,
 					debug = true,
+
 					onEnter = onEnter,
-					onExit = onExit
+					onExit = onExit,
+
+					property = k,
+					id = i,
+					name = zone.name,
+					type = zone.type,
 				})
 			end
 
@@ -102,8 +114,7 @@ RegisterCommand('openZone', function()
 					args = {
 						vehicles = zoneVehicles,
 						property = currentZone.property,
-						zoneId = currentZone.id,
-						zoneOnly = true
+						zoneId = currentZone.id
 					}
 				}
 			end
@@ -153,13 +164,11 @@ end)
 RegisterNetEvent('ox_property:retrieveVehicle', function(data)
 	if currentZone.property == data.property and currentZone.id == data.zoneId then
 		local entities = {}
-		local zone = currentZone.polygon or currentZone.box or currentZone.sphere
-
 		local peds = GetGamePool('CPed')
 		for i = 1, #peds do
 			local ped = peds[i]
 			local pedCoords = GetEntityCoords(ped)
-			if zone.contains(zone, pedCoords) then
+			if currentZone:contains(pedCoords) then
 				entities[#entities + 1] = pedCoords
 			end
 		end
@@ -168,7 +177,7 @@ RegisterNetEvent('ox_property:retrieveVehicle', function(data)
 		for i = 1, #vehicles do
 			local vehicle = vehicles[i]
 			local vehicleCoords = GetEntityCoords(vehicle)
-			if zone.contains(zone, vehicleCoords) then
+			if currentZone:contains(vehicleCoords) then
 				entities[#entities + 1] = vehicleCoords
 			end
 		end
@@ -189,7 +198,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 			}
 
 			local subOptions = {}
-			if data.zoneOnly or vehicle.stored == ('%s:%s'):format(data.property, data.zoneId) then
+			if vehicle.stored == ('%s:%s'):format(data.property, data.zoneId) then
 				subOptions['Retrieve'] = {
 					event = 'ox_property:retrieveVehicle',
 					args = {
