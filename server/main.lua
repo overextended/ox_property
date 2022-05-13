@@ -32,6 +32,12 @@ for i = 1, #sets do
 	local propertyData = data(set)
 	for k, v in pairs(propertyData) do
 		properties[k] = v
+		if v.stashes then
+			for i = 1, #v.stashes do
+				local stash = v.stashes[i]
+				exports.ox_inventory:RegisterStash(('%s:%s'):format(k, i), ('%s - %s'):format(k, stash.label), stash.slots or 50, stash.maxWeight or 50000, stash.owner, stash.groups, stash.coords)
+			end
+		end
 	end
 	ready = true
 end

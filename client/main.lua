@@ -1,6 +1,7 @@
 local table = lib.table
 local properties = {}
 local currentZone = {}
+local nearbyPoints = {}
 
 CreateThread(function()
 	properties = lib.callback.await('ox_property:getProperties', 100)
@@ -12,6 +13,24 @@ CreateThread(function()
 		BeginTextCommandSetBlipName('STRING')
 		AddTextComponentString(k)
 		EndTextCommandSetBlipName(blip)
+
+		for i = 1, #v.stashes do
+			local stash = v.stashes[i]
+			local pointId = ('%s:%s'):format(k, i)
+			local point = lib.points.new(stash.coords, 16, {type = 'stash', id = pointId})
+
+			function point:onEnter()
+				nearbyPoints[self.id] = self
+			end
+
+			function point:onExit()
+				nearbyPoints[self.id] = nil
+			end
+
+			function point:nearby()
+				DrawMarker(2, self.coords.x, self.coords.y, self.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.15, 30, 30, 150, 222, false, false, false, true, false, false, false)
+			end
+		end
 
 		for i = 1, #v.zones do
 			local zone = v.zones[i]
@@ -92,7 +111,18 @@ CreateThread(function()
 end)
 
 RegisterCommand('openZone', function()
-	if next(currentZone) then
+	local point
+	for k, v in pairs(nearbyPoints) do
+		if v.currentDistance < 1 then
+			if v.type == 'stash' then
+				exports.ox_inventory:openInventory('stash', {id = v.id})
+			end
+			point = true
+			break
+		end
+	end
+
+	if not point and next(currentZone) then
 		local options = {}
 		if currentZone.type == 'parking' then
 			local allVehicles, zoneVehicles = lib.callback.await('ox_property:getOwnedVehicles', 100, currentZone.property, currentZone.id)

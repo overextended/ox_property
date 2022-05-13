@@ -2,6 +2,16 @@ return {
 	['Premium Deluxe Motorsport'] = {
 		sprite = 326,
 		blip = vec(-40.709, -1099.769),
+		stashes = {
+			{
+				label = 'Boss Stash',
+				coords = vec(-31.2, -1110.8, 26.4),
+			},
+			{
+				label = 'Office Stash',
+				coords = vec(-29.8, -1107.7, 26.4),
+			},
+		},
 		zones = {
 			{
 				name = 'Boss',
