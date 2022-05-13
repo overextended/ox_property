@@ -60,10 +60,6 @@ lib.callback.register('ox_property:getOwnedVehicles', function(source, property,
 	return vehicles, zoneVehicles
 end)
 
-lib.callback.register('ox_property:getPropertyVehicles', function(source, property)
-	return MySQL.query.await('SELECT * FROM user_vehicles WHERE stored LIKE ?', {('%s%%'):format(property)})
-end)
-
 RegisterServerEvent('ox_property:storeVehicle', function(netid, property, zoneId)
 	local source = source
 	local player = exports.ox_core:getPlayer(source)

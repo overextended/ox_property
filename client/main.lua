@@ -132,9 +132,6 @@ RegisterCommand('openZone', function()
 					zoneId = currentZone.id
 				}
 			end
-		elseif currentZone.type == 'showroom' then
-			local vehicles = lib.callback.await('ox_property:getPropertyVehicles', 100, currentZone.property)
-			print(json.encode(vehicles, {indent=true}))
 		end
 		lib.registerContext({
 			id = 'zone_menu',
