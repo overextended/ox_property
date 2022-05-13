@@ -124,7 +124,21 @@ RegisterCommand('openZone', function()
 
 	if not point and next(currentZone) then
 		local options = {}
-		if currentZone.type == 'parking' then
+		if currentZone.type == 'management' then
+			local property = properties[currentZone.property]
+			options = {
+				{
+					title = 'Stashes',
+					description = 'View the stashes for this property',
+					metadata = {['Count'] = property.stashes and #property.stashes or 0},
+				},
+				{
+					title = 'Zones',
+					description = 'View the zones for this property',
+					metadata = {['Count'] = property.zones and #property.zones or 0},
+				}
+			}
+		elseif currentZone.type == 'parking' then
 			local allVehicles, zoneVehicles = lib.callback.await('ox_property:getOwnedVehicles', 100, currentZone.property, currentZone.id)
 
 			if cache.seat == -1 then
