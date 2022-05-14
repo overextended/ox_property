@@ -44,7 +44,7 @@ CreateThread(function()
 				})
 			end
 			local onExit = function(self)
-				if currentZone.property == self.property and currentZone.id == self.id then
+				if currentZone.property == self.property and currentZone.zoneId == self.zoneId then
 					currentZone = {}
 				end
 			end
@@ -59,7 +59,7 @@ CreateThread(function()
 					onExit = onExit,
 
 					property = k,
-					id = i,
+					zoneId = i,
 					name = zone.name,
 					type = zone.type,
 				})
@@ -74,7 +74,7 @@ CreateThread(function()
 					onExit = onExit,
 
 					property = k,
-					id = i,
+					zoneId = i,
 					name = zone.name,
 					type = zone.type,
 				})
@@ -88,7 +88,7 @@ CreateThread(function()
 					onExit = onExit,
 
 					property = k,
-					id = i,
+					zoneId = i,
 					name = zone.name,
 					type = zone.type,
 				})
@@ -139,13 +139,13 @@ RegisterCommand('openZone', function()
 				}
 			}
 		elseif currentZone.type == 'parking' then
-			local allVehicles, zoneVehicles = lib.callback.await('ox_property:getOwnedVehicles', 100, currentZone.property, currentZone.id)
+			local allVehicles, zoneVehicles = lib.callback.await('ox_property:getOwnedVehicles', 100, currentZone.property, currentZone.zoneId)
 
 			if cache.seat == -1 then
 				options[#options + 1] = {
 					title = 'Store Vehicle',
 					event = 'ox_property:storeVehicle',
-					args = {property = currentZone.property, zoneId = currentZone.id}
+					args = {property = currentZone.property, zoneId = currentZone.zoneId}
 				}
 			end
 
@@ -158,7 +158,7 @@ RegisterCommand('openZone', function()
 					args = {
 						vehicles = zoneVehicles,
 						property = currentZone.property,
-						zoneId = currentZone.id
+						zoneId = currentZone.zoneId
 					}
 				}
 			end
@@ -173,7 +173,7 @@ RegisterCommand('openZone', function()
 				options[#options].args = {
 					vehicles = allVehicles,
 					property = currentZone.property,
-					zoneId = currentZone.id
+					zoneId = currentZone.zoneId
 				}
 			end
 		end
@@ -189,7 +189,7 @@ end)
 RegisterKeyMapping('openZone', 'Zone Menu', 'keyboard', 'e')
 
 RegisterNetEvent('ox_property:storeVehicle', function(data)
-	if currentZone.property == data.property and currentZone.id == data.zoneId then
+	if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
 		if cache.vehicle then
 			if cache.seat == -1 then
 				TriggerServerEvent('ox_property:storeVehicle', VehToNet(cache.vehicle), data.property, data.zoneId)
@@ -203,7 +203,7 @@ RegisterNetEvent('ox_property:storeVehicle', function(data)
 end)
 
 RegisterNetEvent('ox_property:retrieveVehicle', function(data)
-	if currentZone.property == data.property and currentZone.id == data.zoneId then
+	if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
 		local entities = {}
 		local peds = GetGamePool('CPed')
 		for i = 1, #peds do
@@ -228,7 +228,7 @@ RegisterNetEvent('ox_property:retrieveVehicle', function(data)
 end)
 
 RegisterNetEvent('ox_property:vehicleList', function(data)
-	if currentZone.property == data.property and currentZone.id == data.zoneId then
+	if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
 		local options = {}
 		local subMenus = {}
 		for i = 1, #data.vehicles do
@@ -245,7 +245,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 					args = {
 						plate = vehicle.plate,
 						property = currentZone.property,
-						zoneId = currentZone.id
+						zoneId = currentZone.zoneId
 					}
 				}
 			elseif vehicle.stored:find(':') then
@@ -254,7 +254,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 					args = {
 						plate = vehicle.plate,
 						property = currentZone.property,
-						zoneId = currentZone.id
+						zoneId = currentZone.zoneId
 					}
 				}
 			else
@@ -263,7 +263,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 					args = {
 						plate = vehicle.plate,
 						property = currentZone.property,
-						zoneId = currentZone.id,
+						zoneId = currentZone.zoneId,
 						recover = true
 					}
 				}
