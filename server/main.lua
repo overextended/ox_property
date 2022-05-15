@@ -1,12 +1,12 @@
-local sets do
-	local files = {}
+local properties = {}
+local function loadResourceDataFiles()
+	local resource = GetInvokingResource() or GetCurrentResourceName()
 	local system = os.getenv('OS')
-	local command = system and system:match('Windows') and 'dir "' or 'ls "'
-	local path = GetResourcePath(GetCurrentResourceName())
-	local types = path:gsub('//', '/') .. '/data'
-	local suffix = command == 'dir "' and '/" /b' or '/"'
-	local dir = io.popen(command .. types .. suffix)
+	local command = system and system:match('Windows') and 'dir "%s/" /b' or 'ls "%s/"'
+	local path = GetResourcePath(resource)
+	local dir = io.popen(command:format(path:gsub('//', '/') .. '/data'))
 
+	local files = {}
 	if dir then
 		for line in dir:lines() do
 			local file = line:gsub('%.lua', '')
@@ -15,38 +15,34 @@ local sets do
 		dir:close()
 	end
 
-	sets = files
-end
+	local sets = {}
+	for i = 1, #files do
+		local file = files[i]
+		local func, err = load(LoadResourceFile(resource, 'data/' .. file .. '.lua'), file, 't')
+		assert(func, err == nil or '\n^1' .. err .. '^7')
+		sets[i] = func()
+	end
 
-local function data(name)
-	local func, err = load(LoadResourceFile(GetCurrentResourceName(), 'data/' .. name .. '.lua'), name, 't')
-	assert(func, err == nil or '\n^1' .. err .. '^7')
-	return func()
-end
-
-local properties = {}
-local ready
-
-for i = 1, #sets do
-    local set = sets[i]
-	local propertyData = data(set)
-	for k, v in pairs(propertyData) do
-		properties[k] = v
-		if v.stashes then
-			for i = 1, #v.stashes do
-				local stash = v.stashes[i]
-				exports.ox_inventory:RegisterStash(('%s:%s'):format(k, i), ('%s - %s'):format(k, stash.label), stash.slots or 50, stash.maxWeight or 50000, stash.owner, stash.groups, stash.coords)
+	for i = 1, #sets do
+		local propertySet = sets[i]
+		for k, v in pairs(propertySet) do
+			properties[k] = v
+			if v.stashes then
+				for j = 1, #v.stashes do
+					local stash = v.stashes[j]
+					exports.ox_inventory:RegisterStash(('%s:%s'):format(k, j), ('%s - %s'):format(k, stash.label), stash.slots or 50, stash.maxWeight or 50000, stash.owner, stash.groups, stash.coords)
+				end
 			end
 		end
 	end
-	ready = true
+	GlobalState['Properties'] = properties
 end
+exports('loadDataFiles', loadResourceDataFiles)
 
-lib.callback.register('ox_property:getProperties', function(source)
-	while not ready do
-		Wait(100)
+AddEventHandler('onResourceStart', function(resource)
+	if resource == GetCurrentResourceName() then
+		loadResourceDataFiles()
 	end
-	return properties
 end)
 
 lib.callback.register('ox_property:getVehicleList', function(source, data)
@@ -137,13 +133,16 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 	if vehicle and spawn then
 		vehicle.data = json.decode(vehicle.data)
 		local veh = Ox.CreateVehicle(vehicle.charid, vehicle.data.model, spawn, vehicle.data)
+		MySQL.update('UPDATE user_vehicles SET stored = "false" WHERE plate = ?', {vehicle.plate})
 		if data.freeze then
-			FreezeEntityPosition(veh.entity, true)
 			TriggerClientEvent('ox_lib:notify', source, {title = 'Vehicle displayed', type = 'success'})
+			repeat
+				Wait(1000)
+			until GetEntitySpeed(veh.entity) == 0
+			FreezeEntityPosition(veh.entity, true)
 		else
 			TriggerClientEvent('ox_lib:notify', source, {title = 'Vehicle retrieved', type = 'success'})
 		end
-		MySQL.update('UPDATE user_vehicles SET stored = "false" WHERE plate = ?', {vehicle.plate})
 	else
 		TriggerClientEvent('ox_lib:notify', source, {title = 'Vehicle failed to retrieve', type = 'error'})
 	end

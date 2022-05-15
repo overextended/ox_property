@@ -1,5 +1,6 @@
 local table = lib.table
 local properties = {}
+local components = {}
 local currentZone = {}
 local nearbyPoints = {}
 
@@ -73,111 +74,136 @@ exports('registerZoneMenu', function(zone, menu)
 	zoneMenus[zone] = menu
 end)
 
-CreateThread(function()
-	properties = lib.callback.await('ox_property:getProperties', 100)
-	for k, v in pairs(properties) do
-
-		local blip = AddBlipForCoord(v.blip)
-		SetBlipSprite(blip, v.sprite)
-
-		BeginTextCommandSetBlipName('STRING')
-		AddTextComponentString(k)
-		EndTextCommandSetBlipName(blip)
-
-		for i = 1, #v.stashes do
-			local stash = v.stashes[i]
-			local pointId = ('%s:%s'):format(k, i)
-			local point = lib.points.new(stash.coords, 16, {type = 'stash', id = pointId})
-
-			function point:onEnter()
-				nearbyPoints[self.id] = self
-			end
-
-			function point:onExit()
-				nearbyPoints[self.id] = nil
-			end
-
-			function point:nearby()
-				DrawMarker(2, self.coords.x, self.coords.y, self.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.15, 30, 30, 150, 222, false, false, false, true, false, false, false)
+local function loadProperties(value)
+	for k, v in pairs(value) do
+		local create = true
+		if properties[k] then
+			if table.matches(properties[k], v) then
+				create = false
+			else
+				for i = 1, #components[k] do
+					local component = components[k][i]
+					component:remove()
+				end
 			end
 		end
 
-		for i = 1, #v.zones do
-			local zone = v.zones[i]
-			local onEnter = function(self)
-				currentZone = self
-				lib.notify({
-					title = self.property,
-					description = self.name,
-					duration = 5000,
-					position = 'top'
-				})
-			end
-			local onExit = function(self)
-				if currentZone.property == self.property and currentZone.zoneId == self.zoneId then
-					currentZone = {}
+		if create then
+			properties[k] = v
+			components[k] = {}
+			local blip = AddBlipForCoord(v.blip)
+			SetBlipSprite(blip, v.sprite)
+
+			BeginTextCommandSetBlipName('STRING')
+			AddTextComponentString(k)
+			EndTextCommandSetBlipName(blip)
+
+			if v.stashes then
+				for i = 1, #v.stashes do
+					local stash = v.stashes[i]
+					local pointId = ('%s:%s'):format(k, i)
+					local point = lib.points.new(stash.coords, 16, {type = 'stash', id = pointId})
+					components[k][#components[k] + 1] = point
+
+					function point:onEnter()
+						nearbyPoints[self.id] = self
+					end
+
+					function point:onExit()
+						nearbyPoints[self.id] = nil
+					end
+
+					function point:nearby()
+						DrawMarker(2, self.coords.x, self.coords.y, self.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.15, 30, 30, 150, 222, false, false, false, true, false, false, false)
+					end
 				end
 			end
 
-			if zone.points then
-				zoneData = lib.zones.poly({
-					points = zone.points,
-					thickness = zone.thickness,
-					debug = true,
+			if v.zones then
+				for i = 1, #v.zones do
+					local zone = v.zones[i]
+					local onEnter = function(self)
+						currentZone = self
+						lib.notify({
+							title = self.property,
+							description = self.name,
+							duration = 5000,
+							position = 'top'
+						})
+					end
+					local onExit = function(self)
+						if currentZone.property == self.property and currentZone.zoneId == self.zoneId then
+							currentZone = {}
+						end
+					end
 
-					onEnter = onEnter,
-					onExit = onExit,
+					if zone.points then
+						zoneData = lib.zones.poly({
+							points = zone.points,
+							thickness = zone.thickness,
+							debug = true,
 
-					property = k,
-					zoneId = i,
-					name = zone.name,
-					type = zone.type,
-				})
-			elseif zone.box then
-				zoneData = lib.zones.box({
-					coords = zone.coords,
-					rotation = zone.rotation,
-					size = zone.size or vec3(2),
-					debug = true,
+							onEnter = onEnter,
+							onExit = onExit,
 
-					onEnter = onEnter,
-					onExit = onExit,
+							property = k,
+							zoneId = i,
+							name = zone.name,
+							type = zone.type,
+						})
+					elseif zone.box then
+						zoneData = lib.zones.box({
+							coords = zone.coords,
+							rotation = zone.rotation,
+							size = zone.size or vec3(2),
+							debug = true,
 
-					property = k,
-					zoneId = i,
-					name = zone.name,
-					type = zone.type,
-				})
-			elseif zone.sphere then
-				zoneData = lib.zones.sphere({
-					coords = zone.coords,
-					radius = zone.radius,
-					debug = true,
+							onEnter = onEnter,
+							onExit = onExit,
 
-					onEnter = onEnter,
-					onExit = onExit,
+							property = k,
+							zoneId = i,
+							name = zone.name,
+							type = zone.type,
+						})
+					elseif zone.sphere then
+						zoneData = lib.zones.sphere({
+							coords = zone.coords,
+							radius = zone.radius,
+							debug = true,
 
-					property = k,
-					zoneId = i,
-					name = zone.name,
-					type = zone.type,
-				})
-			end
+							onEnter = onEnter,
+							onExit = onExit,
 
-			if zone.disableGenerators then
-				local point1, point2
-				if zone.sphere then
-					point1, point2 = glm.sphere.maximalContainedAABB(zoneData.coords, zoneData.radius)
-				else
-					local verticalOffset = vec(0, 0, zoneData.thickness / 2)
-					point1, point2 = zoneData.polygon:minimalEnclosingAABB()
-					point1 -= verticalOffset
-					point2 += verticalOffset
+							property = k,
+							zoneId = i,
+							name = zone.name,
+							type = zone.type,
+						})
+					end
+					components[k][#components[k] + 1] = zoneData
+
+					if zone.disableGenerators then
+						local point1, point2
+						if zone.sphere then
+							point1, point2 = glm.sphere.maximalContainedAABB(zoneData.coords, zoneData.radius)
+						else
+							local verticalOffset = vec(0, 0, zoneData.thickness / 2)
+							point1, point2 = zoneData.polygon:minimalEnclosingAABB()
+							point1 -= verticalOffset
+							point2 += verticalOffset
+						end
+						SetAllVehicleGeneratorsActiveInArea(point1.x, point1.y, point1.z, point2.x, point2.y, point2.z, false, false)
+					end
 				end
-				SetAllVehicleGeneratorsActiveInArea(point1.x, point1.y, point1.z, point2.x, point2.y, point2.z, false, false)
 			end
 		end
 	end
+end
+loadProperties(GlobalState['Properties'])
+
+AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, reserved, replicated)
+	loadProperties(value)
 end)
 
 RegisterCommand('openZone', function()
