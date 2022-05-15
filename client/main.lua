@@ -3,6 +3,70 @@ local properties = {}
 local currentZone = {}
 local nearbyPoints = {}
 
+local zoneMenus = {
+	management = function(currentZone)
+		local property = properties[currentZone.property]
+		return {
+			{
+				title = 'Stashes',
+				description = 'View the stashes for this property',
+				metadata = {['Count'] = property.stashes and #property.stashes or 0},
+			},
+			{
+				title = 'Zones',
+				description = 'View the zones for this property',
+				metadata = {['Count'] = property.zones and #property.zones or 0},
+			}
+		}
+	end,
+	parking = function(currentZone)
+		local options = {}
+		local allVehicles, zoneVehicles = lib.callback.await('ox_property:getOwnedVehicles', 100, currentZone.property, currentZone.zoneId)
+
+		if cache.seat == -1 then
+			options[#options + 1] = {
+				title = 'Store Vehicle',
+				event = 'ox_property:storeVehicle',
+				args = {property = currentZone.property, zoneId = currentZone.zoneId}
+			}
+		end
+
+		if zoneVehicles[1] then
+			options[#options + 1] = {
+				title = 'Open Location',
+				description = 'View your vehicles at this location',
+				metadata = {['Vehicles'] = #zoneVehicles},
+				event = 'ox_property:vehicleList',
+				args = {
+					vehicles = zoneVehicles,
+					property = currentZone.property,
+					zoneId = currentZone.zoneId
+				}
+			}
+		end
+
+		options[#options + 1] = {
+			title = 'All Vehicles',
+			description = 'View all your vehicles',
+			metadata = {['Vehicles'] = #allVehicles}
+		}
+		if #allVehicles > 0 then
+			options[#options].event = 'ox_property:vehicleList'
+			options[#options].args = {
+				vehicles = allVehicles,
+				property = currentZone.property,
+				zoneId = currentZone.zoneId
+			}
+		end
+
+		return options
+	end
+}
+
+exports('registerZoneMenu', function(zone, menu)
+	zoneMenus[zone] = menu
+end)
+
 CreateThread(function()
 	properties = lib.callback.await('ox_property:getProperties', 100)
 	for k, v in pairs(properties) do
@@ -123,64 +187,10 @@ RegisterCommand('openZone', function()
 	end
 
 	if not point and next(currentZone) then
-		local options = {}
-		if currentZone.type == 'management' then
-			local property = properties[currentZone.property]
-			options = {
-				{
-					title = 'Stashes',
-					description = 'View the stashes for this property',
-					metadata = {['Count'] = property.stashes and #property.stashes or 0},
-				},
-				{
-					title = 'Zones',
-					description = 'View the zones for this property',
-					metadata = {['Count'] = property.zones and #property.zones or 0},
-				}
-			}
-		elseif currentZone.type == 'parking' then
-			local allVehicles, zoneVehicles = lib.callback.await('ox_property:getOwnedVehicles', 100, currentZone.property, currentZone.zoneId)
-
-			if cache.seat == -1 then
-				options[#options + 1] = {
-					title = 'Store Vehicle',
-					event = 'ox_property:storeVehicle',
-					args = {property = currentZone.property, zoneId = currentZone.zoneId}
-				}
-			end
-
-			if zoneVehicles[1] then
-				options[#options + 1] = {
-					title = 'Open Location',
-					description = 'View your vehicles at this location',
-					metadata = {['Vehicles'] = #zoneVehicles},
-					event = 'ox_property:vehicleList',
-					args = {
-						vehicles = zoneVehicles,
-						property = currentZone.property,
-						zoneId = currentZone.zoneId
-					}
-				}
-			end
-
-			options[#options + 1] = {
-				title = 'All Vehicles',
-				description = 'View all your vehicles',
-				metadata = {['Vehicles'] = #allVehicles}
-			}
-			if #allVehicles > 0 then
-				options[#options].event = 'ox_property:vehicleList'
-				options[#options].args = {
-					vehicles = allVehicles,
-					property = currentZone.property,
-					zoneId = currentZone.zoneId
-				}
-			end
-		end
 		lib.registerContext({
 			id = 'zone_menu',
 			title = ('%s - %s'):format(currentZone.property, currentZone.name),
-			options = options
+			options = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
 		})
 		lib.showContext('zone_menu')
 	end
