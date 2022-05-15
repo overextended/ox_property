@@ -21,13 +21,19 @@ local zoneMenus = {
 	end,
 	parking = function(currentZone)
 		local options = {}
-		local allVehicles, zoneVehicles = lib.callback.await('ox_property:getOwnedVehicles', 100, currentZone.property, currentZone.zoneId)
+		local allVehicles, zoneVehicles = lib.callback.await('ox_property:getVehicleList', 100, {
+			property = currentZone.property,
+			zoneId = currentZone.zoneId
+		})
 
 		if cache.seat == -1 then
 			options[#options + 1] = {
 				title = 'Store Vehicle',
 				event = 'ox_property:storeVehicle',
-				args = {property = currentZone.property, zoneId = currentZone.zoneId}
+				args = {
+					property = currentZone.property,
+					zoneId = currentZone.zoneId
+				}
 			}
 		end
 
@@ -38,9 +44,9 @@ local zoneMenus = {
 				metadata = {['Vehicles'] = #zoneVehicles},
 				event = 'ox_property:vehicleList',
 				args = {
-					vehicles = zoneVehicles,
 					property = currentZone.property,
-					zoneId = currentZone.zoneId
+					zoneId = currentZone.zoneId,
+					vehicles = zoneVehicles
 				}
 			}
 		end
@@ -53,9 +59,9 @@ local zoneMenus = {
 		if #allVehicles > 0 then
 			options[#options].event = 'ox_property:vehicleList'
 			options[#options].args = {
-				vehicles = allVehicles,
 				property = currentZone.property,
-				zoneId = currentZone.zoneId
+				zoneId = currentZone.zoneId,
+				vehicles = allVehicles
 			}
 		end
 
@@ -202,7 +208,8 @@ RegisterNetEvent('ox_property:storeVehicle', function(data)
 	if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
 		if cache.vehicle then
 			if cache.seat == -1 then
-				TriggerServerEvent('ox_property:storeVehicle', VehToNet(cache.vehicle), data.property, data.zoneId)
+				data.netid = VehToNet(cache.vehicle)
+				TriggerServerEvent('ox_property:storeVehicle', data)
 			else
 				lib.notify({title = "You are not in the driver's seat", type = 'error'})
 			end
@@ -214,13 +221,13 @@ end)
 
 RegisterNetEvent('ox_property:retrieveVehicle', function(data)
 	if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
-		local entities = {}
+		data.entities = {}
 		local peds = GetGamePool('CPed')
 		for i = 1, #peds do
 			local ped = peds[i]
 			local pedCoords = GetEntityCoords(ped)
 			if currentZone:contains(pedCoords) then
-				entities[#entities + 1] = pedCoords
+				data.entities[#data.entities + 1] = pedCoords
 			end
 		end
 
@@ -229,11 +236,11 @@ RegisterNetEvent('ox_property:retrieveVehicle', function(data)
 			local vehicle = vehicles[i]
 			local vehicleCoords = GetEntityCoords(vehicle)
 			if currentZone:contains(vehicleCoords) then
-				entities[#entities + 1] = vehicleCoords
+				data.entities[#data.entities + 1] = vehicleCoords
 			end
 		end
 
-		TriggerServerEvent('ox_property:retrieveVehicle', data.plate, data.property, data.zoneId, entities)
+		TriggerServerEvent('ox_property:retrieveVehicle', data)
 	end
 end)
 
@@ -250,30 +257,42 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 
 			local subOptions = {}
 			if vehicle.stored == ('%s:%s'):format(data.property, data.zoneId) then
-				subOptions['Retrieve'] = {
-					event = 'ox_property:retrieveVehicle',
-					args = {
-						plate = vehicle.plate,
-						property = currentZone.property,
-						zoneId = currentZone.zoneId
+				if data.freeze then
+					subOptions['Display'] = {
+						event = 'ox_property:retrieveVehicle',
+						args = {
+							property = currentZone.property,
+							zoneId = currentZone.zoneId,
+							plate = vehicle.plate,
+							freeze = true
+						}
 					}
-				}
+				else
+					subOptions['Retrieve'] = {
+						event = 'ox_property:retrieveVehicle',
+						args = {
+							property = currentZone.property,
+							zoneId = currentZone.zoneId,
+							plate = vehicle.plate
+						}
+					}
+				end
 			elseif vehicle.stored:find(':') then
 				subOptions['Move'] = {
 					serverEvent = 'ox_property:moveVehicle',
 					args = {
-						plate = vehicle.plate,
 						property = currentZone.property,
-						zoneId = currentZone.zoneId
+						zoneId = currentZone.zoneId,
+						plate = vehicle.plate
 					}
 				}
 			else
 				subOptions['Recover'] = {
 					serverEvent = 'ox_property:moveVehicle',
 					args = {
-						plate = vehicle.plate,
 						property = currentZone.property,
 						zoneId = currentZone.zoneId,
+						plate = vehicle.plate,
 						recover = true
 					}
 				}
