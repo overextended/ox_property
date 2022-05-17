@@ -97,6 +97,9 @@ local function loadProperties(value)
 			components[k][#components[k] + 1] = blip
 
 			SetBlipSprite(blip, v.sprite)
+			SetBlipDisplay(blip, 2)
+			SetBlipShrink(blip, true)
+			SetBlipAsShortRange(blip, true)
 
 			BeginTextCommandSetBlipName('STRING')
 			AddTextComponentString(k)
