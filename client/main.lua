@@ -288,26 +288,14 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 
 			local subOptions = {}
 			if vehicle.stored == ('%s:%s'):format(data.property, data.zoneId) then
-				if data.freeze then
-					subOptions['Display'] = {
-						event = 'ox_property:retrieveVehicle',
-						args = {
-							property = currentZone.property,
-							zoneId = currentZone.zoneId,
-							plate = vehicle.plate,
-							freeze = true
-						}
+				subOptions['Retrieve'] = {
+					event = 'ox_property:retrieveVehicle',
+					args = {
+						property = currentZone.property,
+						zoneId = currentZone.zoneId,
+						plate = vehicle.plate
 					}
-				else
-					subOptions['Retrieve'] = {
-						event = 'ox_property:retrieveVehicle',
-						args = {
-							property = currentZone.property,
-							zoneId = currentZone.zoneId,
-							plate = vehicle.plate
-						}
-					}
-				end
+				}
 			elseif vehicle.stored:find(':') then
 				subOptions['Move'] = {
 					serverEvent = 'ox_property:moveVehicle',
