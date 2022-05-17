@@ -276,7 +276,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 		local subMenus = {}
 		for i = 1, #data.vehicles do
 			local vehicle = data.vehicles[i]
-			options[vehicle.plate] = {
+			options[('%s - %s'):format(vehicle.modelData.name, vehicle.plate)] = {
 				menu = vehicle.plate,
 				metadata = {['Location'] = vehicle.stored == 'false' and 'Unknown' or vehicle.stored}
 			}

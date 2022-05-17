@@ -109,6 +109,8 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
 		local zone = ('%s:%s'):format(data.property, data.zoneId)
 		for i = 1, #vehicles do
 			local vehicle = vehicles[i]
+			local vehicleData = json.decode(vehicle.data)
+			vehicle.modelData = modelData[vehicleHashes[vehicleData.model]]
 			if vehicle.stored == zone then
 				zoneVehicles[#zoneVehicles + 1] = vehicle
 			end
