@@ -203,6 +203,10 @@ local function loadProperties(value)
 end
 loadProperties(GlobalState['Properties'])
 
+exports('getCurrentZone', function()
+	return {property = currentZone.property, zoneId = currentZone.zoneId}
+end)
+
 AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, reserved, replicated)
 	loadProperties(value)
 end)
