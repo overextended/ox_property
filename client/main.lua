@@ -47,7 +47,8 @@ local zoneMenus = {
 				args = {
 					property = currentZone.property,
 					zoneId = currentZone.zoneId,
-					vehicles = zoneVehicles
+					vehicles = zoneVehicles,
+					zoneOnly = true
 				}
 			}
 		end
