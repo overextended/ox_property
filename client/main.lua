@@ -82,7 +82,8 @@ local function loadProperties(value)
 			if table.matches(properties[k], v) then
 				create = false
 			else
-				for i = 1, #components[k] do
+				RemoveBlip(components[k][1])
+				for i = 2, #components[k] do
 					local component = components[k][i]
 					component:remove()
 				end
@@ -93,6 +94,8 @@ local function loadProperties(value)
 			properties[k] = v
 			components[k] = {}
 			local blip = AddBlipForCoord(v.blip)
+			components[k][#components[k] + 1] = blip
+
 			SetBlipSprite(blip, v.sprite)
 
 			BeginTextCommandSetBlipName('STRING')
