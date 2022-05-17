@@ -1,4 +1,34 @@
+local modelData = {}
+local vehicleHashes = {}
 local properties = {}
+local vehicleFilters = {
+	class = {
+		'Compacts',
+		'Sedans',
+		'SUVs',
+		'Coupes',
+		'Muscle',
+		'Sports Classics',
+		'Sports',
+		'Super',
+		'Motorcycles',
+		'Off-road',
+		'Industrial',
+		'Utility',
+		'Vans',
+		'Cycles',
+		'Boats',
+		'Helicopters',
+		'Planes',
+		'Service',
+		'Emergency',
+		'Military',
+		'Commercial',
+		'Trains',
+		'Open Wheel'
+	}
+}
+
 local function loadResourceDataFiles()
 	local resource = GetInvokingResource() or GetCurrentResourceName()
 	local system = os.getenv('OS')
@@ -42,6 +72,31 @@ exports('loadDataFiles', loadResourceDataFiles)
 AddEventHandler('onResourceStart', function(resource)
 	if resource == GetCurrentResourceName() then
 		loadResourceDataFiles()
+
+		modelData = MySQL.query.await('SELECT * FROM vehicle_data')
+		GlobalState['ModelData'] = modelData
+		for i = 1, #modelData do
+			local vehicle = modelData[i]
+			vehicleHashes[joaat(vehicle.model)] = i
+		end
+
+		local columns = {'make', 'type', 'bodytype'}
+		for i = 1, #columns do
+			local column = columns[i]
+			local result = MySQL.query.await('SELECT DISTINCT ?? FROM vehicle_data ORDER BY ??', {column, column})
+			vehicleFilters[column] = {}
+			for j = 1, #result do
+				vehicleFilters[column][#vehicleFilters[column] + 1] = result[j][column]
+			end
+		end
+
+		local minmax = MySQL.single.await('SELECT MIN(price), MIN(doors), MIN(seats), MAX(price), MAX(doors), MAX(seats) FROM vehicle_data')
+
+		vehicleFilters.price = {minmax['MIN(price)'], minmax['MAX(price)']}
+		vehicleFilters.doors = {minmax['MIN(doors)'], minmax['MAX(doors)']}
+		vehicleFilters.seats = {minmax['MIN(seats)'], minmax['MAX(seats)']}
+
+		GlobalState['VehicleFilters'] = vehicleFilters
 	end
 end)
 
