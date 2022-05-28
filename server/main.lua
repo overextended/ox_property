@@ -130,7 +130,8 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 	local vehicle = Vehicle(data.netid)
 	if player.charid == vehicle.owner then
 		local passengers = {}
-		for i = -1, 15 do
+		local modelData = modelData[vehicleHashes[vehicle.data.model]]
+		for i = -1, modelData.seats - 1 do
 			local ped = GetPedInVehicleSeat(vehicle.entity, i)
 			if ped ~= 0 then
 				passengers[#passengers + 1] = ped
