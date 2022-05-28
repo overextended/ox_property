@@ -256,27 +256,33 @@ RegisterNetEvent('ox_property:storeVehicle', function(data)
 	end
 end)
 
+local function getZoneEntities()
+	local entities = {}
+	local peds = GetGamePool('CPed')
+	for i = 1, #peds do
+		local ped = peds[i]
+		local pedCoords = GetEntityCoords(ped)
+		if currentZone:contains(pedCoords) then
+			entities[#entities + 1] = pedCoords
+		end
+	end
+
+	local vehicles = GetGamePool('CVehicle')
+	for i = 1, #vehicles do
+		local vehicle = vehicles[i]
+		local vehicleCoords = GetEntityCoords(vehicle)
+		if currentZone:contains(vehicleCoords) then
+			entities[#entities + 1] = vehicleCoords
+		end
+	end
+
+	return entities
+end
+exports('getZoneEntities', getZoneEntities)
+
 RegisterNetEvent('ox_property:retrieveVehicle', function(data)
 	if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
-		data.entities = {}
-		local peds = GetGamePool('CPed')
-		for i = 1, #peds do
-			local ped = peds[i]
-			local pedCoords = GetEntityCoords(ped)
-			if currentZone:contains(pedCoords) then
-				data.entities[#data.entities + 1] = pedCoords
-			end
-		end
-
-		local vehicles = GetGamePool('CVehicle')
-		for i = 1, #vehicles do
-			local vehicle = vehicles[i]
-			local vehicleCoords = GetEntityCoords(vehicle)
-			if currentZone:contains(vehicleCoords) then
-				data.entities[#data.entities + 1] = vehicleCoords
-			end
-		end
-
+		data.entities = getZoneEntities()
 		TriggerServerEvent('ox_property:retrieveVehicle', data)
 	end
 end)
