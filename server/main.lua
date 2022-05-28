@@ -184,7 +184,6 @@ end
 exports('findClearSpawn', findClearSpawn)
 
 RegisterServerEvent('ox_property:retrieveVehicle', function(data)
-	local source = source
 	local player = exports.ox_core:getPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
 
@@ -194,18 +193,11 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 	if vehicle and spawn then
 		vehicle.data = json.decode(vehicle.data)
 		local veh = Ox.CreateVehicle(vehicle.charid, vehicle.data.model, spawn, vehicle.data)
-		MySQL.update('UPDATE user_vehicles SET stored = "false" WHERE plate = ?', {vehicle.plate})
-		if data.freeze then
-			TriggerClientEvent('ox_lib:notify', source, {title = 'Vehicle displayed', type = 'success'})
-			repeat
-				Wait(1000)
-			until GetEntitySpeed(veh.entity) == 0
-			FreezeEntityPosition(veh.entity, true)
-		else
-			TriggerClientEvent('ox_lib:notify', source, {title = 'Vehicle retrieved', type = 'success'})
-		end
+		MySQL.update('UPDATE user_vehicles SET stored = "false" WHERE plate = ?', {vehicle.data.plate})
+
+		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
 	else
-		TriggerClientEvent('ox_lib:notify', source, {title = 'Vehicle failed to retrieve', type = 'error'})
+		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to retrieve', type = 'error'})
 	end
 end)
 
