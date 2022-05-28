@@ -100,6 +100,10 @@ AddEventHandler('onResourceStart', function(resource)
 	end
 end)
 
+exports('getModelData', function(model)
+	return modelData[vehicleHashes[model]]
+end)
+
 lib.callback.register('ox_property:getVehicleList', function(source, data)
 	local player = exports.ox_core:getPlayer(source)
 	local vehicles = data.propertyOnly and MySQL.query.await('SELECT * FROM user_vehicles WHERE stored LIKE ? AND charid = ?', {('%s%%'):format(data.property), player.charid}) or MySQL.query.await('SELECT * FROM user_vehicles WHERE charid = ?', {player.charid})
