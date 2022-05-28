@@ -126,7 +126,7 @@ end)
 
 RegisterServerEvent('ox_property:storeVehicle', function(data)
 	local player = exports.ox_core:getPlayer(source)
-	local vehicle = Vehicle(data.netid)
+	local vehicle = Vehicle(NetworkGetNetworkIdFromEntity(GetVehiclePedIsIn(GetPlayerPed(player.source), false)))
 	if player.charid == vehicle.owner then
 		local passengers = {}
 		local modelData = modelData[vehicleHashes[vehicle.data.model]]

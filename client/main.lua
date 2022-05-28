@@ -245,7 +245,6 @@ RegisterNetEvent('ox_property:storeVehicle', function(data)
 	if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
 		if cache.vehicle then
 			if cache.seat == -1 then
-				data.netid = VehToNet(cache.vehicle)
 				TriggerServerEvent('ox_property:storeVehicle', data)
 			else
 				lib.notify({title = "You are not in the driver's seat", type = 'error'})
