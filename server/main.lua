@@ -156,15 +156,6 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 	end
 end)
 
-local rotate = {0, 180}
-local function shuffle(tbl)
-	for i = #tbl, 2, -1 do
-	  local j = math.random(i)
-	  tbl[i], tbl[j] = tbl[j], tbl[i]
-	end
-	return tbl
-end
-
 local function isPointClear(point, entities)
 	for i = 1, #entities do
 		local entity = entities[i]
@@ -175,21 +166,30 @@ local function isPointClear(point, entities)
 	return true
 end
 
+local rotate = {0, 180}
+local function findClearSpawn(spawns, entities)
+	local len = #spawns
+	for i = len, 2, -1 do
+		local j = math.random(i)
+		spawns[i], spawns[j] = spawns[j], spawns[i]
+	end
+
+	for i = 1, len do
+		local spawn = spawns[i]
+		if isPointClear(spawn.xyz, entities) then
+			return vec(spawn.xyz, spawn.w + rotate[math.random(2)])
+		end
+	end
+end
+exports('findClearSpawn', findClearSpawn)
+
 RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 	local source = source
 	local player = exports.ox_core:getPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
-	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {data.plate, player.charid})
 
-	local spawns = shuffle(zone.spawns)
-	local spawn
-	for i = 1, #spawns do
-		local point = spawns[i]
-		if isPointClear(point.xyz, data.entities) then
-			spawn = vec(point.xyz, point.w + rotate[math.random(2)])
-			break
-		end
-	end
+	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {data.plate, player.charid})
+	local spawn = findClearSpawn(zone.spawns, data.entities)
 
 	if vehicle and spawn then
 		vehicle.data = json.decode(vehicle.data)
