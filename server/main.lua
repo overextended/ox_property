@@ -125,7 +125,6 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
 end)
 
 RegisterServerEvent('ox_property:storeVehicle', function(data)
-	local source = source
 	local player = exports.ox_core:getPlayer(source)
 	local vehicle = Vehicle(data.netid)
 	if player.charid == vehicle.owner then
@@ -151,9 +150,9 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 		end
 		Wait(300)
 		vehicle.store(('%s:%s'):format(data.property, data.zoneId))
-		TriggerClientEvent('ox_lib:notify', source, {title = 'Vehicle stored', type = 'success'})
+		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle stored', type = 'success'})
 	else
-		TriggerClientEvent('ox_lib:notify', source, {title = 'Vehicle failed to store', type = 'error'})
+		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to store', type = 'error'})
 	end
 end)
 
@@ -211,15 +210,14 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 end)
 
 RegisterServerEvent('ox_property:moveVehicle', function(data)
-	local source = source
 	local player = exports.ox_core:getPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
 	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {data.plate, player.charid})
 
 	if vehicle then
 		MySQL.update.await('UPDATE user_vehicles SET stored = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), vehicle.plate})
-		TriggerClientEvent('ox_lib:notify', source, {title = data.recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
+		TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
 	else
-		TriggerClientEvent('ox_lib:notify', source, {title = data.recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
+		TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
 	end
 end)
