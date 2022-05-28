@@ -1,12 +1,12 @@
 --[[ FX Information ]]--
 fx_version   'cerulean'
--- use_fxv2_oal 'yes'
+use_fxv2_oal 'yes'
 lua54        'yes'
 game         'gta5'
 
 --[[ Resource Information ]]--
 name         'ox_property'
-version      '0.0.0'
+version      '0.1.0'
 description  'Property'
 license      'GPL-3.0-or-later'
 author       'overextended'
@@ -21,8 +21,6 @@ dependencies {
 shared_scripts {
 	'@ox_core/imports.lua',
 	'@ox_lib/init.lua',
-	'shared/main.lua',
-	'shared/data/*.lua',
 }
 
 client_scripts {
