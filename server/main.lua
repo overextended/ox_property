@@ -144,7 +144,7 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 				end
 			end
 		end
-		Wait(500)
+		Wait(300)
 		vehicle.store(('%s:%s'):format(data.property, data.zoneId))
 		TriggerClientEvent('ox_lib:notify', source, {title = 'Vehicle stored', type = 'success'})
 	else
