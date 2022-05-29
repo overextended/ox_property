@@ -3,7 +3,7 @@ local vehicleHashes = {}
 local properties = {}
 local vehicleFilters = {
 	class = {
-		'Compacts',
+		[0] = 'Compacts',
 		'Sedans',
 		'SUVs',
 		'Coupes',
