@@ -192,7 +192,7 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 
 	if vehicle and spawn then
 		vehicle.data = json.decode(vehicle.data)
-		local veh = Ox.CreateVehicle(vehicle.charid, vehicle.data.model, spawn, vehicle.data)
+		local veh = Ox.CreateVehicle(vehicle.charid, vehicle.data, spawn)
 		MySQL.update('UPDATE user_vehicles SET stored = "false" WHERE plate = ?', {vehicle.data.plate})
 
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
