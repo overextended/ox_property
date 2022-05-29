@@ -203,7 +203,24 @@ end)
 
 RegisterServerEvent('ox_property:moveVehicle', function(data)
 	local player = lib.getPlayer(source)
-	local zone = properties[data.property].zones[data.zoneId]
+
+	local vehicles = exports.ox_vehicles:list()
+	for k, v in pairs(vehicles) do
+		if v.plate == data.plate then
+			local modelData = modelData[vehicleHashes[v.data.model]]
+			for i = -1, modelData.seats - 1 do
+				if GetPedInVehicleSeat(v.entity, i) ~= 0 then
+					TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
+					return
+				end
+			end
+
+			local vehicle = Vehicle(v.netid)
+			vehicle.despawn()
+			break
+		end
+	end
+
 	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {data.plate, player.charid})
 
 	if vehicle then
