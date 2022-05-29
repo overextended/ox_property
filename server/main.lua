@@ -105,7 +105,7 @@ exports('getModelData', function(model)
 end)
 
 lib.callback.register('ox_property:getVehicleList', function(source, data)
-	local player = exports.ox_core:getPlayer(source)
+	local player = lib.getPlayer(source)
 	local vehicles = data.propertyOnly and MySQL.query.await('SELECT * FROM user_vehicles WHERE stored LIKE ? AND charid = ?', {('%s%%'):format(data.property), player.charid}) or MySQL.query.await('SELECT * FROM user_vehicles WHERE charid = ?', {player.charid})
 
 	local zoneVehicles = {}
@@ -125,7 +125,7 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
 end)
 
 RegisterServerEvent('ox_property:storeVehicle', function(data)
-	local player = exports.ox_core:getPlayer(source)
+	local player = lib.getPlayer(source)
 	local vehicle = Vehicle(NetworkGetNetworkIdFromEntity(GetVehiclePedIsIn(GetPlayerPed(player.source), false)))
 	if player.charid == vehicle.owner then
 		local passengers = {}
@@ -184,7 +184,7 @@ end
 exports('findClearSpawn', findClearSpawn)
 
 RegisterServerEvent('ox_property:retrieveVehicle', function(data)
-	local player = exports.ox_core:getPlayer(source)
+	local player = lib.getPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
 
 	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {data.plate, player.charid})
@@ -202,7 +202,7 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 end)
 
 RegisterServerEvent('ox_property:moveVehicle', function(data)
-	local player = exports.ox_core:getPlayer(source)
+	local player = lib.getPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
 	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {data.plate, player.charid})
 
