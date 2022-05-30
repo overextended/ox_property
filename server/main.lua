@@ -126,7 +126,14 @@ end)
 
 RegisterServerEvent('ox_property:storeVehicle', function(data)
 	local player = lib.getPlayer(source)
-	local vehicle = Vehicle(NetworkGetNetworkIdFromEntity(GetVehiclePedIsIn(GetPlayerPed(player.source), false)))
+	local netid = NetworkGetNetworkIdFromEntity(GetVehiclePedIsIn(GetPlayerPed(player.source), false))
+
+	if not exports.ox_vehicles:get(netid) then
+		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to store', type = 'error'})
+		return
+	end
+
+	local vehicle = Vehicle(netid)
 	local zone = properties[data.property].zones[data.zoneId]
 	local modelData = modelData[vehicleHashes[vehicle.data.model]] -- workaround while GetVehicleType() is broken for `CREATE_AUTOMOBILE`
 
