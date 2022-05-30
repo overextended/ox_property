@@ -127,9 +127,11 @@ end)
 RegisterServerEvent('ox_property:storeVehicle', function(data)
 	local player = lib.getPlayer(source)
 	local vehicle = Vehicle(NetworkGetNetworkIdFromEntity(GetVehiclePedIsIn(GetPlayerPed(player.source), false)))
-	if player.charid == vehicle.owner then
+	local zone = properties[data.property].zones[data.zoneId]
+	local modelData = modelData[vehicleHashes[vehicle.data.model]] -- workaround while GetVehicleType() is broken for `CREATE_AUTOMOBILE`
+
+	if player.charid == vehicle.owner and zone.vehicles[modelData.type] then
 		local passengers = {}
-		local modelData = modelData[vehicleHashes[vehicle.data.model]]
 		for i = -1, modelData.seats - 1 do
 			local ped = GetPedInVehicleSeat(vehicle.entity, i)
 			if ped ~= 0 then
