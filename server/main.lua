@@ -161,6 +161,8 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 
 		Wait(300)
 		vehicle.store(('%s:%s'):format(data.property, data.zoneId))
+		data.properties.plate = vehicle.plate
+		MySQL.update.await('UPDATE user_vehicles SET data = ? WHERE plate = ?', {json.encode(data.properties), vehicle.plate})
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle stored', type = 'success'})
 	else
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to store', type = 'error'})
@@ -205,7 +207,7 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 
 	if vehicle and spawn and zone.vehicles[vehicle.type] then
 		Ox.CreateVehicle(vehicle.charid, vehicle.data, spawn)
-		MySQL.update('UPDATE user_vehicles SET stored = "false" WHERE plate = ?', {vehicle.data.plate})
+		MySQL.update('UPDATE user_vehicles SET stored = "false" WHERE plate = ?', {vehicle.plate})
 
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
 	else
