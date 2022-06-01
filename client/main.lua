@@ -289,13 +289,26 @@ end)
 
 RegisterNetEvent('ox_property:vehicleList', function(data)
 	if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
+		local properties = GlobalState['Properties']
 		local options = {}
 		local subMenus = {}
 		for i = 1, #data.vehicles do
 			local vehicle = data.vehicles[i]
+
+			local zoneName = vehicle.stored == 'false' and 'Unknown' or vehicle.stored:gsub('^%l', string.upper)
+			if vehicle.stored:find(':') then
+				local property, zoneId = string.strsplit(':', vehicle.stored)
+				zoneId = tonumber(zoneId)
+				if currentZone.property == property and currentZone.zoneId == zoneId then
+					zoneName = 'Current Zone'
+				elseif properties[property].zones[zoneId] then
+					zoneName = string.strconcat(property, ' - ', properties[property].zones[zoneId].name)
+				end
+			end
+
 			options[('%s - %s'):format(vehicle.modelData.name, vehicle.plate)] = {
 				menu = vehicle.plate,
-				metadata = {['Location'] = vehicle.stored == 'false' and 'Unknown' or vehicle.stored}
+				metadata = {['Location'] = zoneName}
 			}
 
 			local subOptions = {}
