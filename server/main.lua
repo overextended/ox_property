@@ -164,6 +164,7 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 		data.properties.plate = vehicle.plate
 		MySQL.update.await('UPDATE user_vehicles SET data = ? WHERE plate = ?', {json.encode(data.properties), vehicle.plate})
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle stored', type = 'success'})
+		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'store')
 	else
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to store', type = 'error'})
 	end
@@ -210,6 +211,7 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 		MySQL.update('UPDATE user_vehicles SET stored = "false" WHERE plate = ?', {vehicle.plate})
 
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
+		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'retrieve')
 	else
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to retrieve', type = 'error'})
 	end
@@ -242,6 +244,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
 	if vehicle and zone.vehicles[vehicle.type] then
 		MySQL.update.await('UPDATE user_vehicles SET stored = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), vehicle.plate})
 		TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
+		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, data.recover and 'recover' or 'move')
 	else
 		TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
 	end
