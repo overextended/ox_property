@@ -53,19 +53,49 @@ local function loadResourceDataFiles()
 		sets[i] = func()
 	end
 
+	local propertyInsert = {}
 	for i = 1, #sets do
 		local propertySet = sets[i]
 		for k, v in pairs(propertySet) do
-			properties[k] = v
+			local savedData = MySQL.query.await('SELECT * FROM ox_property WHERE property = ?', {k})
+			if next(savedData) then
+				for j = 1, #savedData do
+					local component = savedData[j]
+					v[component.type == 'stash' and 'stashes' or 'zones'][component.id].permitted = json.decode(component.permitted)
+				end
+			else
+				if v.stashes then
+					for j = 1, #v.stashes do
+						v.stashes[j].permitted = v.stashes[j].permitted or {}
+						propertyInsert[#propertyInsert + 1] = {k, 'stash', j, json.encode(v.stashes[j].permitted)}
+					end
+				end
+
+				if v.zones then
+					for j = 1, #v.zones do
+						v.zones[j].permitted = v.zones[j].permitted or {}
+						propertyInsert[#propertyInsert + 1] = {k, 'zone', j, json.encode(v.zones[j].permitted)}
+					end
+				end
+			end
+
 			if v.stashes then
 				for j = 1, #v.stashes do
 					local stash = v.stashes[j]
-					exports.ox_inventory:RegisterStash(('%s:%s'):format(k, j), ('%s - %s'):format(k, stash.label), stash.slots or 50, stash.maxWeight or 50000, stash.owner, stash.groups, stash.coords)
+					local owner = stash.permitted.owner == 'true' or tostring(not (stash.permitted.groups and next(stash.permitted.groups)) and tonumber(stash.permitted.owner))
+
+					exports.ox_inventory:RegisterStash(('%s:%s'):format(k, j), ('%s - %s'):format(k, stash.label), stash.slots or 50, stash.maxWeight or 50000, owner, stash.permitted.groups, stash.coords)
 				end
 			end
+
+			properties[k] = v
 		end
 	end
 	GlobalState['Properties'] = properties
+
+	if next(propertyInsert) then
+		MySQL.prepare('INSERT INTO ox_property (property, type, id, permitted) VALUES (?, ?, ?, ?)', propertyInsert)
+	end
 end
 exports('loadDataFiles', loadResourceDataFiles)
 
@@ -104,8 +134,21 @@ exports('getModelData', function(model)
 	return modelData[vehicleHashes[model]]
 end)
 
+local function isPermitted(player, zone)
+	if next(zone.permitted) and not (zone.permitted.groups and player.hasGroup(zone.permitted.groups)) and zone.permitted.owner ~= player.charid then
+		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
+		return false
+	end
+	return true
+end
+exports('isPermitted', isPermitted)
+
 lib.callback.register('ox_property:getVehicleList', function(source, data)
 	local player = lib.getPlayer(source)
+	local zone = properties[data.property].zones[data.zoneId]
+
+	if not isPermitted(player, zone) then return end
+
 	local vehicles = data.propertyOnly and MySQL.query.await('SELECT * FROM user_vehicles WHERE stored LIKE ? AND charid = ?', {('%s%%'):format(data.property), player.charid}) or MySQL.query.await('SELECT * FROM user_vehicles WHERE charid = ?', {player.charid})
 
 	local zoneVehicles = {}
@@ -126,15 +169,17 @@ end)
 
 RegisterServerEvent('ox_property:storeVehicle', function(data)
 	local player = lib.getPlayer(source)
-	local netid = NetworkGetNetworkIdFromEntity(GetVehiclePedIsIn(GetPlayerPed(player.source), false))
+	local zone = properties[data.property].zones[data.zoneId]
 
+	if not isPermitted(player, zone) then return end
+
+	local netid = NetworkGetNetworkIdFromEntity(GetVehiclePedIsIn(GetPlayerPed(player.source), false))
 	if not exports.ox_vehicles:get(netid) then
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to store', type = 'error'})
 		return
 	end
 
 	local vehicle = Vehicle(netid)
-	local zone = properties[data.property].zones[data.zoneId]
 	vehicle.data = modelData[vehicleHashes[vehicle.data.model]] -- workaround while GetVehicleType() is broken for `CREATE_AUTOMOBILE`
 
 	if player.charid == vehicle.owner and zone.vehicles[vehicle.data.type] then
@@ -201,6 +246,8 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 	local player = lib.getPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
 
+	if not isPermitted(player, zone) then return end
+
 	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {data.plate, player.charid})
 	vehicle.data = json.decode(vehicle.data)
 
@@ -220,6 +267,8 @@ end)
 RegisterServerEvent('ox_property:moveVehicle', function(data)
 	local player = lib.getPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
+
+	if not isPermitted(player, zone) then return end
 
 	local vehicles = exports.ox_vehicles:list()
 	for k, v in pairs(vehicles) do

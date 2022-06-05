@@ -154,6 +154,7 @@ local function loadProperties(value)
 							zoneId = i,
 							name = zone.name,
 							type = zone.type,
+							permitted = zone.permitted,
 						})
 					elseif zone.box then
 						zoneData = lib.zones.box({
@@ -169,6 +170,7 @@ local function loadProperties(value)
 							zoneId = i,
 							name = zone.name,
 							type = zone.type,
+							permitted = zone.permitted,
 						})
 					elseif zone.sphere then
 						zoneData = lib.zones.sphere({
@@ -183,6 +185,7 @@ local function loadProperties(value)
 							zoneId = i,
 							name = zone.name,
 							type = zone.type,
+							permitted = zone.permitted,
 						})
 					end
 					components[k][#components[k] + 1] = zoneData
@@ -215,24 +218,28 @@ AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, r
 end)
 
 RegisterCommand('openZone', function()
-	local point
 	for k, v in pairs(nearbyPoints) do
 		if v.currentDistance < 1 then
 			if v.type == 'stash' then
 				exports.ox_inventory:openInventory('stash', {id = v.id})
 			end
-			point = true
-			break
+			return
 		end
 	end
 
-	if not point and next(currentZone) then
-		lib.registerContext({
-			id = 'zone_menu',
-			title = ('%s - %s'):format(currentZone.property, currentZone.name),
-			options = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
-		})
-		lib.showContext('zone_menu')
+	local player = lib.getPlayer()
+	local playerData = Ox.GetPlayerData()
+	if next(currentZone) then
+		if not next(currentZone.permitted) or (currentZone.permitted.groups and player.hasGroup(currentZone.permitted.groups)) or currentZone.permitted.owner == playerData.charid then
+			lib.registerContext({
+				id = 'zone_menu',
+				title = ('%s - %s'):format(currentZone.property, currentZone.name),
+				options = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
+			})
+			lib.showContext('zone_menu')
+		else
+			lib.notify({title = 'Permission Denied', type = 'error'})
+		end
 	end
 end)
 
