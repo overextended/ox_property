@@ -4,15 +4,15 @@ return {
 		blip = vec(-4.7, 523.5),
 		stashes = {
 			{
-				label = 'Garage Stash',
+				name = 'Garage Stash',
 				coords = vec(25.3, 544.6, 176.0),
 			},
 			{
-				label = 'Dining Stash',
+				name = 'Dining Stash',
 				coords = vec(-7.0, 530.2, 175.0),
 			},
 			{
-				label = 'Bedroom Stash',
+				name = 'Bedroom Stash',
 				coords = vec(-1.5, 525.9, 170.6),
 			},
 		},
@@ -50,15 +50,15 @@ return {
 		blip = vec(-1148.3, -1523.0),
 		stashes = {
 			{
-				label = 'Parking Stash',
+				name = 'Parking Stash',
 				coords = vec(-1147.2, -1525.4, 4.3),
 			},
 			{
-				label = 'Stairs Stash',
+				name = 'Stairs Stash',
 				coords = vec(-1144.7, -1518.0, 4.3),
 			},
 			{
-				label = 'Entrance Stash',
+				name = 'Entrance Stash',
 				coords = vec(-1152.8, -1516.9, 10.6),
 			},
 		},
@@ -101,11 +101,11 @@ return {
 		blip = vec(1973.6, 3818.2),
 		stashes = {
 			{
-				label = 'Parking Stash',
+				name = 'Parking Stash',
 				coords = vec(1964.6, 3819.0, 32.4),
 			},
 			{
-				label = 'TV Stash',
+				name = 'TV Stash',
 				coords = vec(1978.2, 3819.4, 33.5),
 			},
 		},
@@ -144,11 +144,11 @@ return {
 		blip = vec(-14.9, -1433.2),
 		stashes = {
 			{
-				label = 'Garage Stash',
+				name = 'Garage Stash',
 				coords = vec(-25.8, -1424.7, 30.7),
 			},
 			{
-				label = 'Storage Room',
+				name = 'Storage Room',
 				coords = vec(-17.1, -1430.4, 31.1),
 			},
 		},
@@ -186,11 +186,11 @@ return {
 		blip = vec(1274.4, -1712.6),
 		stashes = {
 			{
-				label = 'Electronics Stash',
+				name = 'Electronics Stash',
 				coords = vec(1272.1, -1711.9, 54.8),
 			},
 			{
-				label = 'Chemicals Stash',
+				name = 'Chemicals Stash',
 				coords = vec(1268.6, -1710.4, 54.8),
 			},
 		},
@@ -209,15 +209,15 @@ return {
 		blip = vec(-803.4, 175.9),
 		stashes = {
 			{
-				label = 'Garage Stash',
+				name = 'Garage Stash',
 				coords = vec(-809.4, 190.8, 72.5),
 			},
 			{
-				label = 'Kitchen Stash',
+				name = 'Kitchen Stash',
 				coords = vec(-803.1, 184.7, 72.6),
 			},
 			{
-				label = 'Living Stash',
+				name = 'Living Stash',
 				coords = vec(-804.9, 177.4, 72.8),
 			},
 		},

@@ -90,7 +90,7 @@ function loadResourceDataFiles(property)
 					local stash = v.stashes[j]
 					local owner = stash.permitted.owner == 'true' or tostring(not (stash.permitted.groups and next(stash.permitted.groups)) and tonumber(stash.permitted.owner))
 
-					exports.ox_inventory:RegisterStash(('%s:%s'):format(k, j), ('%s - %s'):format(k, stash.label), stash.slots or 50, stash.maxWeight or 50000, owner, stash.permitted.groups, stash.coords)
+					exports.ox_inventory:RegisterStash(('%s:%s'):format(k, j), ('%s - %s'):format(k, stash.name), stash.slots or 50, stash.maxWeight or 50000, owner, stash.permitted.groups, stash.coords)
 				end
 			end
 
