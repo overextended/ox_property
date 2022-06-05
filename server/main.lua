@@ -1,3 +1,5 @@
+defaultPermissions = {}
+
 local modelData = {}
 local vehicleHashes = {}
 local properties = {}
@@ -70,14 +72,14 @@ function loadResourceDataFiles(property)
 			else
 				if v.stashes then
 					for j = 1, #v.stashes do
-						v.stashes[j].permitted = v.stashes[j].permitted or {}
+						v.stashes[j].permitted = v.stashes[j].permitted or defaultPermissions
 						propertyInsert[#propertyInsert + 1] = {k, 'stash', j, json.encode(v.stashes[j].permitted)}
 					end
 				end
 
 				if v.zones then
 					for j = 1, #v.zones do
-						v.zones[j].permitted = v.zones[j].permitted or {}
+						v.zones[j].permitted = v.zones[j].permitted or defaultPermissions
 						propertyInsert[#propertyInsert + 1] = {k, 'zone', j, json.encode(v.zones[j].permitted)}
 					end
 				end
