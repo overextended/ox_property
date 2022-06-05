@@ -29,28 +29,32 @@ local vehicleFilters = {
 	}
 }
 
-local function loadResourceDataFiles()
-	local resource = GetInvokingResource() or GetCurrentResourceName()
-	local system = os.getenv('OS')
-	local command = system and system:match('Windows') and 'dir "%s/" /b' or 'ls "%s/"'
-	local path = GetResourcePath(resource)
-	local dir = io.popen(command:format(path:gsub('//', '/') .. '/data'))
-
-	local files = {}
-	if dir then
-		for line in dir:lines() do
-			local file = line:gsub('%.lua', '')
-			files[#files + 1] = file
-		end
-		dir:close()
-	end
-
+function loadResourceDataFiles(property)
 	local sets = {}
-	for i = 1, #files do
-		local file = files[i]
-		local func, err = load(LoadResourceFile(resource, 'data/' .. file .. '.lua'), file, 't')
-		assert(func, err == nil or '\n^1' .. err .. '^7')
-		sets[i] = func()
+	if property then
+		sets[1] = {[property] = properties[property]}
+	else
+		local resource = GetInvokingResource() or GetCurrentResourceName()
+		local system = os.getenv('OS')
+		local command = system and system:match('Windows') and 'dir "%s/" /b' or 'ls "%s/"'
+		local path = GetResourcePath(resource)
+		local dir = io.popen(command:format(path:gsub('//', '/') .. '/data'))
+
+		local files = {}
+		if dir then
+			for line in dir:lines() do
+				local file = line:gsub('%.lua', '')
+				files[#files + 1] = file
+			end
+			dir:close()
+		end
+
+		for i = 1, #files do
+			local file = files[i]
+			local func, err = load(LoadResourceFile(resource, 'data/' .. file .. '.lua'), file, 't')
+			assert(func, err == nil or '\n^1' .. err .. '^7')
+			sets[i] = func()
+		end
 	end
 
 	local propertyInsert = {}
