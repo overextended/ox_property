@@ -293,7 +293,6 @@ end)
 
 RegisterNetEvent('ox_property:vehicleList', function(data)
 	if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
-		local properties = GlobalState['Properties']
 		local options = {}
 		local subMenus = {}
 		for i = 1, #data.vehicles do
