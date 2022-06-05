@@ -78,16 +78,13 @@ end)
 local function loadProperties(value)
 	for k, v in pairs(value) do
 		local create = true
-		if properties[k] then
-			if table.matches(properties[k], v) then
-				create = false
-			else
-				RemoveBlip(components[k][1])
-				for i = 2, #components[k] do
-					local component = components[k][i]
-					component:remove()
-				end
+		if not properties[k] and components[k] then
+			RemoveBlip(components[k][1])
+			for i = 2, #components[k] do
+				components[k][i]:remove()
 			end
+		elseif properties[k] then
+			create = false
 		end
 
 		if create then
