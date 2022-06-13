@@ -155,7 +155,7 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
 
 	if not isPermitted(player, zone) then return end
 
-	local vehicles = data.propertyOnly and MySQL.query.await('SELECT * FROM user_vehicles WHERE stored LIKE ? AND charid = ?', {('%s%%'):format(data.property), player.charid}) or MySQL.query.await('SELECT * FROM user_vehicles WHERE charid = ?', {player.charid})
+	local vehicles = data.propertyOnly and MySQL.query.await('SELECT * FROM vehicles WHERE stored LIKE ? AND owner = ?', {('%s%%'):format(data.property), player.charid}) or MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid})
 
 	local zoneVehicles = {}
 	if data.property and data.zoneId then
@@ -213,7 +213,7 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 		Wait(300)
 		vehicle.store(('%s:%s'):format(data.property, data.zoneId))
 		data.properties.plate = vehicle.plate
-		MySQL.update.await('UPDATE user_vehicles SET data = ? WHERE plate = ?', {json.encode(data.properties), vehicle.plate})
+		MySQL.update.await('UPDATE vehicles SET data = ? WHERE plate = ?', {json.encode(data.properties), vehicle.plate})
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle stored', type = 'success'})
 		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'store')
 	else
@@ -254,14 +254,14 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 
 	if not isPermitted(player, zone) then return end
 
-	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {data.plate, player.charid})
+	local vehicle = MySQL.single.await('SELECT * FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 	vehicle.data = json.decode(vehicle.data)
 
 	local spawn = findClearSpawn(zone.spawns, data.entities)
 
 	if vehicle and spawn and zone.vehicles[vehicle.type] then
-		Ox.CreateVehicle(vehicle.charid, vehicle.data, spawn)
-		MySQL.update('UPDATE user_vehicles SET stored = "false" WHERE plate = ?', {vehicle.plate})
+		Ox.CreateVehicle(vehicle.owner, vehicle.data, spawn)
+		MySQL.update('UPDATE vehicles SET stored = "false" WHERE plate = ?', {vehicle.plate})
 
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
 		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'retrieve')
@@ -293,11 +293,11 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
 		end
 	end
 
-	local vehicle = MySQL.single.await('SELECT * FROM user_vehicles WHERE plate = ? AND charid = ?', {data.plate, player.charid})
+	local vehicle = MySQL.single.await('SELECT * FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 	vehicle.data = json.decode(vehicle.data)
 
 	if vehicle and zone.vehicles[vehicle.type] then
-		MySQL.update.await('UPDATE user_vehicles SET stored = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), vehicle.plate})
+		MySQL.update.await('UPDATE vehicles SET stored = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), vehicle.plate})
 		TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
 		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, data.recover and 'recover' or 'move')
 	else
