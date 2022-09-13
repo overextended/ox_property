@@ -99,7 +99,7 @@ local function loadProperties(value)
 			SetBlipAsShortRange(blip, true)
 
 			BeginTextCommandSetBlipName('STRING')
-			AddTextComponentString(k)
+			AddTextComponentSubstringPlayerName(k)
 			EndTextCommandSetBlipName(blip)
 
 			if v.stashes then
@@ -227,7 +227,6 @@ RegisterCommand('openZone', function()
 		end
 	end
 
-	local player = lib.getPlayer()
 	local playerData = Ox.GetPlayerData()
 	if next(currentZone) then
 		if not next(currentZone.permitted) or (currentZone.permitted.groups and player.hasGroup(currentZone.permitted.groups)) or currentZone.permitted.owner == playerData.charid then
@@ -298,7 +297,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 		for i = 1, #data.vehicles do
 			local vehicle = data.vehicles[i]
 
-			local zoneName = vehicle.stored == 'false' and 'Unknown' or vehicle.stored:gsub('^%l', string.upper)
+			local zoneName = not vehicle.stored and 'Unknown' or vehicle.stored:gsub('^%l', string.upper)
 			if vehicle.stored:find(':') then
 				local property, zoneId = string.strsplit(':', vehicle.stored)
 				zoneId = tonumber(zoneId)

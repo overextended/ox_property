@@ -150,7 +150,7 @@ end
 exports('isPermitted', isPermitted)
 
 lib.callback.register('ox_property:getVehicleList', function(source, data)
-	local player = lib.getPlayer(source)
+	local player = Ox.GetPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
 
 	if not isPermitted(player, zone) then return end
@@ -162,8 +162,7 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
 		local zone = ('%s:%s'):format(data.property, data.zoneId)
 		for i = 1, #vehicles do
 			local vehicle = vehicles[i]
-			local vehicleData = json.decode(vehicle.data)
-			vehicle.modelData = modelData[vehicleHashes[vehicleData.model]]
+			vehicle.modelData = modelData[vehicleHashes[joaat(vehicle.model)]]
 			if vehicle.stored == zone then
 				zoneVehicles[#zoneVehicles + 1] = vehicle
 			end
@@ -174,19 +173,18 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
 end)
 
 RegisterServerEvent('ox_property:storeVehicle', function(data)
-	local player = lib.getPlayer(source)
+	local player = Ox.GetPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
 
 	if not isPermitted(player, zone) then return end
 
-	local netid = NetworkGetNetworkIdFromEntity(GetVehiclePedIsIn(GetPlayerPed(player.source), false))
-	if not exports.ox_vehicles:get(netid) then
+	local vehicle = Ox.GetVehicleFromNetId(NetworkGetNetworkIdFromEntity(GetVehiclePedIsIn(GetPlayerPed(player.source), false)))
+	if not vehicle then
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to store', type = 'error'})
 		return
 	end
 
-	local vehicle = Vehicle(netid)
-	vehicle.data = modelData[vehicleHashes[vehicle.data.model]] -- workaround while GetVehicleType() is broken for `CREATE_AUTOMOBILE`
+	vehicle.data = modelData[vehicleHashes[joaat(vehicle.model)]] -- workaround while GetVehicleType() is broken for `CREATE_AUTOMOBILE`
 
 	if player.charid == vehicle.owner and zone.vehicles[vehicle.data.type] then
 		local passengers = {}
@@ -211,9 +209,9 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 		end
 
 		Wait(300)
+		vehicle.set('properties', data.properties)
 		vehicle.store(('%s:%s'):format(data.property, data.zoneId))
-		data.properties.plate = vehicle.plate
-		MySQL.update.await('UPDATE vehicles SET data = ? WHERE plate = ?', {json.encode(data.properties), vehicle.plate})
+
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle stored', type = 'success'})
 		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'store')
 	else
@@ -242,26 +240,24 @@ local function findClearSpawn(spawns, entities)
 	for i = 1, len do
 		local spawn = spawns[i]
 		if isPointClear(spawn.xyz, entities) then
-			return vec(spawn.xyz, spawn.w + rotate[math.random(2)])
+			return spawn.xyz, spawn.w + rotate[math.random(2)]
 		end
 	end
 end
 exports('findClearSpawn', findClearSpawn)
 
 RegisterServerEvent('ox_property:retrieveVehicle', function(data)
-	local player = lib.getPlayer(source)
+	local player = Ox.GetPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
 
 	if not isPermitted(player, zone) then return end
 
 	local vehicle = MySQL.single.await('SELECT * FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
-	vehicle.data = json.decode(vehicle.data)
 
-	local spawn = findClearSpawn(zone.spawns, data.entities)
+	local spawn, heading = findClearSpawn(zone.spawns, data.entities)
 
-	if vehicle and spawn and zone.vehicles[vehicle.type] then
-		Ox.CreateVehicle(vehicle.owner, vehicle.data, spawn)
-		MySQL.update('UPDATE vehicles SET stored = "false" WHERE plate = ?', {vehicle.plate})
+	if vehicle and spawn and zone.vehicles[modelData[vehicleHashes[joaat(vehicle.model)]].type] then
+		Ox.CreateVehicle(vehicle.id, spawn, heading)
 
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
 		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'retrieve')
@@ -271,15 +267,15 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 end)
 
 RegisterServerEvent('ox_property:moveVehicle', function(data)
-	local player = lib.getPlayer(source)
+	local player = Ox.GetPlayer(source)
 	local zone = properties[data.property].zones[data.zoneId]
 
 	if not isPermitted(player, zone) then return end
 
-	local vehicles = exports.ox_vehicles:list()
+	local vehicles = Ox.GetVehicles()
 	for k, v in pairs(vehicles) do
 		if v.plate == data.plate then
-			local seats = modelData[vehicleHashes[v.data.model]].seats
+			local seats = modelData[vehicleHashes[joaat(v.model)]].seats
 			for i = -1, seats - 1 do
 				if GetPedInVehicleSeat(v.entity, i) ~= 0 then
 					TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
@@ -294,9 +290,8 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
 	end
 
 	local vehicle = MySQL.single.await('SELECT * FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
-	vehicle.data = json.decode(vehicle.data)
 
-	if vehicle and zone.vehicles[vehicle.type] then
+	if vehicle and zone.vehicles[modelData[vehicleHashes[joaat(vehicle.model)]].type] then
 		MySQL.update.await('UPDATE vehicles SET stored = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), vehicle.plate})
 		TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
 		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, data.recover and 'recover' or 'move')
