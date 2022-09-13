@@ -32,7 +32,7 @@ return {
 			{
 				name = 'Garage',
 				type = 'parking',
-				vehicles = { .automobile, .bike },
+				vehicles = { automobile = true, bike = true },
 				points = {
 					vec(20.8, 548.9, 176.0),
 					vec(17.7, 543.4, 176.0),
@@ -79,7 +79,7 @@ return {
 			{
 				name = 'Parking',
 				type = 'parking',
-				vehicles = { .automobile, .bike },
+				vehicles = { automobile = true, bike = true },
 				points = {
 					vec(-1154.0, -1514.9, 4.3),
 					vec(-1160.8, -1520.0, 4.3),
@@ -126,7 +126,7 @@ return {
 			{
 				name = 'Parking',
 				type = 'parking',
-				vehicles = { .automobile, .bike },
+				vehicles = { automobile = true, bike = true },
 				points = {
 					vec(1971.7, 3825.6, 32.4),
 					vec(1973.6, 3822.3, 32.4),
@@ -168,7 +168,7 @@ return {
 			{
 				name = 'Garage',
 				type = 'parking',
-				vehicles = { .automobile, .bike },
+				vehicles = { automobile = true, bike = true },
 				points = {
 					vec(-23.3, -1432.3, 30.7),
 					vec(-23.5, -1425.3, 30.7),
@@ -239,7 +239,7 @@ return {
 			{
 				name = 'Garage',
 				type = 'parking',
-				vehicles = { .automobile, .bike },
+				vehicles = { automobile = true, bike = true },
 				points = {
 					vec(-814.0, 183.7, 72.5),
 					vec(-815.9, 188.9, 72.5),
@@ -253,7 +253,7 @@ return {
 			{
 				name = 'Carport',
 				type = 'parking',
-				vehicles = { .automobile, .bike },
+				vehicles = { automobile = true, bike = true },
 				points = {
 					vec(-805.0, 166.2, 71.6),
 					vec(-811.0, 163.7, 71.6),
