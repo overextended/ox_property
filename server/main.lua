@@ -1,37 +1,33 @@
-defaultPermissions = {}
-
-local modelData = {}
-local vehicleHashes = {}
-local properties = {}
-local vehicleFilters = {
-	class = {
-		[0] = 'Compacts',
-		'Sedans',
-		'SUVs',
-		'Coupes',
-		'Muscle',
-		'Sports Classics',
-		'Sports',
-		'Super',
-		'Motorcycles',
-		'Off-road',
-		'Industrial',
-		'Utility',
-		'Vans',
-		'Cycles',
-		'Boats',
-		'Helicopters',
-		'Planes',
-		'Service',
-		'Emergency',
-		'Military',
-		'Commercial',
-		'Trains',
-		'Open Wheel'
-	}
+GlobalState['VehicleClasses'] = {
+	[0] = 'Compacts',
+	'Sedans',
+	'SUVs',
+	'Coupes',
+	'Muscle',
+	'Sports Classics',
+	'Sports',
+	'Super',
+	'Motorcycles',
+	'Off-road',
+	'Industrial',
+	'Utility',
+	'Vans',
+	'Cycles',
+	'Boats',
+	'Helicopters',
+	'Planes',
+	'Service',
+	'Emergency',
+	'Military',
+	'Commercial',
+	'Trains',
+	'Open Wheel'
 }
 
-function loadResourceDataFiles(property)
+local defaultPermissions = {}
+local properties = {}
+
+local function loadResourceDataFiles(property)
 	local sets = {}
 	if property then
 		sets[1] = {[property] = properties[property]}
@@ -108,37 +104,9 @@ exports('loadDataFiles', loadResourceDataFiles)
 AddEventHandler('onResourceStart', function(resource)
 	if resource == GetCurrentResourceName() then
 		loadResourceDataFiles()
-
-		modelData = MySQL.query.await('SELECT * FROM vehicle_data')
-		GlobalState['ModelData'] = modelData
-		for i = 1, #modelData do
-			local vehicle = modelData[i]
-			vehicleHashes[joaat(vehicle.model)] = i
-		end
-
-		local columns = {'make', 'type', 'bodytype'}
-		for i = 1, #columns do
-			local column = columns[i]
-			local result = MySQL.query.await('SELECT DISTINCT ?? FROM vehicle_data ORDER BY ??', {column, column})
-			vehicleFilters[column] = {}
-			for j = 1, #result do
-				vehicleFilters[column][#vehicleFilters[column] + 1] = result[j][column]
-			end
-		end
-
-		local minmax = MySQL.single.await('SELECT MIN(price), MIN(doors), MIN(seats), MAX(price), MAX(doors), MAX(seats) FROM vehicle_data')
-
-		vehicleFilters.price = {minmax['MIN(price)'], minmax['MAX(price)']}
-		vehicleFilters.doors = {minmax['MIN(doors)'], minmax['MAX(doors)']}
-		vehicleFilters.seats = {minmax['MIN(seats)'], minmax['MAX(seats)']}
-
-		GlobalState['VehicleFilters'] = vehicleFilters
 	end
 end)
 
-exports('getModelData', function(model)
-	return modelData[vehicleHashes[model]]
-end)
 
 local function isPermitted(player, zone)
 	if next(zone.permitted) and not (zone.permitted.groups and player.hasGroup(zone.permitted.groups)) and zone.permitted.owner ~= player.charid then
@@ -157,19 +125,21 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
 
 	local vehicles = data.propertyOnly and MySQL.query.await('SELECT * FROM vehicles WHERE stored LIKE ? AND owner = ?', {('%s%%'):format(data.property), player.charid}) or MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid})
 
+	local vehicleModels = {}
 	local zoneVehicles = {}
 	if data.property and data.zoneId then
 		local zone = ('%s:%s'):format(data.property, data.zoneId)
 		for i = 1, #vehicles do
 			local vehicle = vehicles[i]
-			vehicle.modelData = modelData[vehicleHashes[joaat(vehicle.model)]]
+			vehicleModels[#vehicleModels + 1] = vehicle.model
+
 			if vehicle.stored == zone then
 				zoneVehicles[#zoneVehicles + 1] = vehicle
 			end
 		end
 	end
 
-	return vehicles, zoneVehicles
+	return vehicles, zoneVehicles, Ox.GetVehicleData(vehicleModels)
 end)
 
 RegisterServerEvent('ox_property:storeVehicle', function(data)
@@ -178,13 +148,13 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 
 	if not isPermitted(player, zone) then return end
 
-	local vehicle = Ox.GetVehicleFromNetId(NetworkGetNetworkIdFromEntity(GetVehiclePedIsIn(GetPlayerPed(player.source), false)))
+	local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(GetPlayerPed(player.source), false))
 	if not vehicle then
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to store', type = 'error'})
 		return
 	end
 
-	vehicle.data = modelData[vehicleHashes[joaat(vehicle.model)]] -- workaround while GetVehicleType() is broken for `CREATE_AUTOMOBILE`
+	vehicle.data = Ox.GetVehicleData(vehicle.model)
 
 	if player.charid == vehicle.owner and zone.vehicles[vehicle.data.type] then
 		local passengers = {}
@@ -256,7 +226,7 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 
 	local spawn, heading = findClearSpawn(zone.spawns, data.entities)
 
-	if vehicle and spawn and zone.vehicles[modelData[vehicleHashes[joaat(vehicle.model)]].type] then
+	if vehicle and spawn and zone.vehicles[Ox.GetVehicleData(vehicle.model).type] then
 		Ox.CreateVehicle(vehicle.id, spawn, heading)
 
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
@@ -275,7 +245,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
 	local vehicles = Ox.GetVehicles()
 	for k, v in pairs(vehicles) do
 		if v.plate == data.plate then
-			local seats = modelData[vehicleHashes[joaat(v.model)]].seats
+			local seats = Ox.GetVehicleData(v.model).seats
 			for i = -1, seats - 1 do
 				if GetPedInVehicleSeat(v.entity, i) ~= 0 then
 					TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
@@ -291,7 +261,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
 
 	local vehicle = MySQL.single.await('SELECT * FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 
-	if vehicle and zone.vehicles[modelData[vehicleHashes[joaat(vehicle.model)]].type] then
+	if vehicle and zone.vehicles[Ox.GetVehicleData(vehicle.model).type] then
 		MySQL.update.await('UPDATE vehicles SET stored = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), vehicle.plate})
 		TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
 		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, data.recover and 'recover' or 'move')

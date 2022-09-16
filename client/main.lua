@@ -22,7 +22,7 @@ local zoneMenus = {
 	end,
 	parking = function(currentZone)
 		local options = {}
-		local allVehicles, zoneVehicles = lib.callback.await('ox_property:getVehicleList', 100, {
+		local allVehicles, zoneVehicles, vehicleData = lib.callback.await('ox_property:getVehicleList', 100, {
 			property = currentZone.property,
 			zoneId = currentZone.zoneId
 		})
@@ -48,6 +48,7 @@ local zoneMenus = {
 					property = currentZone.property,
 					zoneId = currentZone.zoneId,
 					vehicles = zoneVehicles,
+					vehicleData = vehicleData,
 					zoneOnly = true
 				}
 			}
@@ -63,7 +64,8 @@ local zoneMenus = {
 			options[#options].args = {
 				property = currentZone.property,
 				zoneId = currentZone.zoneId,
-				vehicles = allVehicles
+				vehicles = allVehicles,
+				vehicleData = vehicleData
 			}
 		end
 
@@ -296,6 +298,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 		local subMenus = {}
 		for i = 1, #data.vehicles do
 			local vehicle = data.vehicles[i]
+			vehicle.modelData = data.vehicleData[vehicle.model]
 
 			local zoneName = not vehicle.stored and 'Unknown' or vehicle.stored:gsub('^%l', string.upper)
 			if vehicle.stored:find(':') then
