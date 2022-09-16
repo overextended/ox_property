@@ -147,7 +147,6 @@ local function loadProperties(value)
 						zoneData = lib.zones.poly({
 							points = zone.points,
 							thickness = zone.thickness,
-							debug = true,
 
 							onEnter = onEnter,
 							onExit = onExit,
@@ -163,7 +162,6 @@ local function loadProperties(value)
 							coords = zone.coords,
 							rotation = zone.rotation,
 							size = zone.size or vec3(2),
-							debug = true,
 
 							onEnter = onEnter,
 							onExit = onExit,
@@ -178,7 +176,6 @@ local function loadProperties(value)
 						zoneData = lib.zones.sphere({
 							coords = zone.coords,
 							radius = zone.radius,
-							debug = true,
 
 							onEnter = onEnter,
 							onExit = onExit,
