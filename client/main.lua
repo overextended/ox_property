@@ -295,7 +295,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 		local subMenus = {}
 		for i = 1, #data.vehicles do
 			local vehicle = data.vehicles[i]
-			vehicle.modelData = data.vehicleData[vehicle.model]
+			vehicle.data = data.vehicleData[vehicle.model]
 
 			local zoneName = not vehicle.stored and 'Unknown' or vehicle.stored:gsub('^%l', string.upper)
 			if vehicle.stored:find(':') then
@@ -310,7 +310,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 				end
 			end
 
-			options[('%s - %s'):format(vehicle.modelData.name, vehicle.plate)] = {
+			options[('%s - %s'):format(vehicle.data.name, vehicle.plate)] = {
 				menu = vehicle.plate,
 				metadata = {['Location'] = zoneName}
 			}
