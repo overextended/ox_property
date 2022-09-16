@@ -1,5 +1,5 @@
 GlobalState['VehicleClasses'] = {
-	[0] = 'Compacts',
+	'Compacts',
 	'Sedans',
 	'SUVs',
 	'Coupes',
