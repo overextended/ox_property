@@ -199,18 +199,21 @@ local function isPointClear(point, entities)
 	return true
 end
 
-local rotate = {0, 180}
 local function findClearSpawn(spawns, entities)
 	local len = #spawns
-	for i = len, 2, -1 do
-		local j = math.random(i)
-		spawns[i], spawns[j] = spawns[j], spawns[i]
-	end
-
-	for i = 1, len do
+	while next(spawns) do
+		local i = math.random(len)
 		local spawn = spawns[i]
-		if isPointClear(spawn.xyz, entities) then
-			return spawn.xyz, spawn.w + rotate[math.random(2)]
+		if spawn and isPointClear(spawn.xyz, entities) then
+			local rotate = math.random(2)
+			return {
+				coords = spawn.xyz,
+				heading = spawn.w + rotate * 180,
+				id = i,
+				rotate = rotate == 2
+			}
+		else
+			spawns[i] = nil
 		end
 	end
 end
@@ -224,10 +227,10 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 
 	local vehicle = MySQL.single.await('SELECT * FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 
-	local spawn, heading = findClearSpawn(zone.spawns, data.entities)
+	local spawn = findClearSpawn(zone.spawns, data.entities)
 
 	if vehicle and spawn and zone.vehicles[Ox.GetVehicleData(vehicle.model).type] then
-		Ox.CreateVehicle(vehicle.id, spawn, heading)
+		Ox.CreateVehicle(vehicle.id, spawn.coords, spawn.heading)
 
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
 		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'retrieve')
