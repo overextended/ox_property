@@ -304,7 +304,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 				if currentZone.property == property and currentZone.zoneId == zoneId then
 					zoneName = 'Current Zone'
 				elseif properties[property]?.zones?[zoneId] then
-					zoneName = string.strconcat(property, ' - ', properties[property].zones[zoneId].name)
+					zoneName = ('%s - %s'):format(property, properties[property].zones[zoneId].name)
 				else
 					zoneName = 'Unknown'
 				end
