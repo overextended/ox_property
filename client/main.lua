@@ -298,7 +298,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 			vehicle.data = data.vehicleData[vehicle.model]
 
 			local zoneName = not vehicle.stored and 'Unknown' or vehicle.stored:gsub('^%l', string.upper)
-			if vehicle.stored:find(':') then
+			if vehicle.stored and vehicle.stored:find(':') then
 				local property, zoneId = string.strsplit(':', vehicle.stored)
 				zoneId = tonumber(zoneId)
 				if currentZone.property == property and currentZone.zoneId == zoneId then
@@ -325,7 +325,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 						plate = vehicle.plate
 					}
 				}
-			elseif vehicle.stored:find(':') and zoneName ~= 'Unknown' then
+			elseif zoneName ~= 'Unknown' and vehicle.stored:find(':') then
 				subOptions['Move'] = {
 					serverEvent = 'ox_property:moveVehicle',
 					args = {
