@@ -217,6 +217,8 @@ AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, r
 end)
 
 RegisterCommand('openZone', function()
+	if IsPauseMenuActive() or IsNuiFocused() then return end
+
 	for k, v in pairs(nearbyPoints) do
 		if v.currentDistance < 1 then
 			if v.type == 'stash' then
