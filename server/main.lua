@@ -263,10 +263,12 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
 		end
 	end
 
-	local vehicle = MySQL.single.await('SELECT * FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
+	local vehicle = MySQL.single.await('SELECT plate, model, data FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 
 	if vehicle and zone.vehicles[Ox.GetVehicleData(vehicle.model).type] then
-		MySQL.update.await('UPDATE vehicles SET stored = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), vehicle.plate})
+		vehicle.data = json.decode(vehicle.data)
+		vehicle.data.display = nil
+		MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), json.encode(vehicle.data), vehicle.plate})
 		TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
 		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, data.recover and 'recover' or 'move')
 	else
