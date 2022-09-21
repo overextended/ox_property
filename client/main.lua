@@ -2,7 +2,6 @@ local table = lib.table
 local properties = {}
 local components = {}
 local currentZone = {}
-local nearbyPoints = {}
 
 local zoneMenus = {
 	management = function(currentZone)
@@ -77,6 +76,10 @@ exports('registerZoneMenu', function(zone, menu)
 	zoneMenus[zone] = menu
 end)
 
+function nearbyPoint(point)
+	DrawMarker(2, point.coords.x, point.coords.y, point.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.15, 30, 30, 150, 222, false, false, 0, true, false, false, false)
+end
+
 local function loadProperties(value)
 	for k, v in pairs(value) do
 		local create = true
@@ -108,21 +111,12 @@ local function loadProperties(value)
 			if v.stashes then
 				for i = 1, #v.stashes do
 					local stash = v.stashes[i]
-					local pointId = ('%s:%s'):format(k, i)
-					local point = lib.points.new(stash.coords, 16, {type = 'stash', id = pointId})
-					components[k][#components[k] + 1] = point
-
-					function point:onEnter()
-						nearbyPoints[self.id] = self
-					end
-
-					function point:onExit()
-						nearbyPoints[self.id] = nil
-					end
-
-					function point:nearby()
-						DrawMarker(2, self.coords.x, self.coords.y, self.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.15, 30, 30, 150, 222, false, false, false, true, false, false, false)
-					end
+					local pointName = ('%s:%s'):format(k, i)
+					components[k][#components[k] + 1] = lib.points.new(stash.coords, 16, {
+						type = 'stash',
+						name = pointName,
+						nearby = nearbyPoint,
+					})
 				end
 			end
 
@@ -220,18 +214,14 @@ end)
 RegisterCommand('openZone', function()
 	if IsPauseMenuActive() or IsNuiFocused() then return end
 
-	for k, v in pairs(nearbyPoints) do
-		if v.currentDistance < 1 then
-			if v.type == 'stash' then
-				exports.ox_inventory:openInventory('stash', {id = v.id})
-			end
-			return
-		end
+	local closestPoint = lib.points.closest()
+
+	if closestPoint and closestPoint.type == 'stash' and closestPoint.currentDistance < 1 then
+		return exports.ox_inventory:openInventory('stash', closestPoint.name)
 	end
 
-	local playerData = Ox.GetPlayerData()
 	if next(currentZone) then
-		if not next(currentZone.permitted) or (currentZone.permitted.groups and player.hasGroup(currentZone.permitted.groups)) or currentZone.permitted.owner == playerData.charid then
+		if not next(currentZone.permitted) or (currentZone.permitted.groups and player.hasGroup(currentZone.permitted.groups)) or currentZone.permitted.owner == player.charid then
 			lib.registerContext({
 				id = 'zone_menu',
 				title = ('%s - %s'):format(currentZone.property, currentZone.name),
