@@ -205,12 +205,12 @@ local function findClearSpawn(spawns, entities)
 		local i = math.random(len)
 		local spawn = spawns[i]
 		if spawn and isPointClear(spawn.xyz, entities) then
-			local rotate = math.random(2)
+			local rotate = math.random(2) - 1
 			return {
 				coords = spawn.xyz,
 				heading = spawn.w + rotate * 180,
 				id = i,
-				rotate = rotate == 2
+				rotate = rotate == 1
 			}
 		else
 			spawns[i] = nil
