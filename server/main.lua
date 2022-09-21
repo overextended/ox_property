@@ -180,6 +180,7 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 
 		Wait(300)
 		vehicle.set('properties', data.properties)
+		vehicle.set('display', nil)
 		vehicle.store(('%s:%s'):format(data.property, data.zoneId))
 
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle stored', type = 'success'})
