@@ -92,7 +92,8 @@ local function loadProperties(value)
 		if create then
 			properties[k] = v
 			components[k] = {}
-			local blip = AddBlipForCoord(v.blip)
+			local blipCoords = v.blip
+			local blip = AddBlipForCoord(blipCoords.x, blipCoords.y, blipCoords.z)
 			components[k][#components[k] + 1] = blip
 
 			SetBlipSprite(blip, v.sprite)
