@@ -20,14 +20,12 @@ return {
 			{
 				name = 'Management',
 				type = 'management',
-				sphere = true,
-				coords = vec(3.7, 525.5, 174.6),
+				sphere = vec(3.7, 525.5, 174.6),
 			},
 			{
 				name = 'Wardrobe',
 				type = 'wardrobe',
-				sphere = true,
-				coords = vec(8.4, 528.5, 170.6),
+				sphere = vec(8.4, 528.5, 170.6),
 			},
 			{
 				name = 'Garage',
@@ -66,14 +64,12 @@ return {
 			{
 				name = 'Management',
 				type = 'management',
-				sphere = true,
-				coords = vec(-1156.7, -1517.9, 10.6),
+				sphere = vec(-1156.7, -1517.9, 10.6),
 			},
 			{
 				name = 'Wardrobe',
 				type = 'wardrobe',
-				sphere = true,
-				coords = vec(-1150.0, -1513.5, 10.6),
+				sphere = vec(-1150.0, -1513.5, 10.6),
 				radius = 1.5,
 			},
 			{
@@ -113,14 +109,12 @@ return {
 			{
 				name = 'Management',
 				type = 'management',
-				sphere = true,
-				coords = vec(1975.0, 3818.6, 33.4),
+				sphere = vec(1975.0, 3818.6, 33.4),
 			},
 			{
 				name = 'Wardrobe',
 				type = 'wardrobe',
-				sphere = true,
-				coords = vec(1969.5, 3815.0, 33.4),
+				sphere = vec(1969.5, 3815.0, 33.4),
 				radius = 1.5,
 			},
 			{
@@ -156,14 +150,12 @@ return {
 			{
 				name = 'Management',
 				type = 'management',
-				sphere = true,
-				coords = vec(-9.9, -1433.4, 31.1),
+				sphere = vec(-9.9, -1433.4, 31.1),
 			},
 			{
 				name = 'Wardrobe',
 				type = 'wardrobe',
-				sphere = true,
-				coords = vec(-17.5, -1439.0, 31.1),
+				sphere = vec(-17.5, -1439.0, 31.1),
 			},
 			{
 				name = 'Garage',
@@ -198,8 +190,7 @@ return {
 			{
 				name = 'Management',
 				type = 'management',
-				sphere = true,
-				coords = vec(1275.4, -1710.9, 54.8),
+				sphere = vec(1275.4, -1710.9, 54.8),
 				radius = 1,
 			},
 		},
@@ -225,15 +216,13 @@ return {
 			{
 				name = 'Management',
 				type = 'management',
-				sphere = true,
-				coords = vec(-807.2, 167.7, 76.7),
+				sphere = vec(-807.2, 167.7, 76.7),
 				radius = 1.5,
 			},
 			{
 				name = 'Wardrobe',
 				type = 'wardrobe',
-				sphere = true,
-				coords = vec(-811.8, 175.0, 76.7),
+				sphere = vec(-811.8, 175.0, 76.7),
 				radius = 1.5,
 			},
 			{

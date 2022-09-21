@@ -159,7 +159,7 @@ local function loadProperties(value)
 						})
 					elseif zone.box then
 						zoneData = lib.zones.box({
-							coords = zone.coords,
+							coords = zone.box,
 							rotation = zone.rotation,
 							size = zone.size or vec3(2),
 
@@ -174,7 +174,7 @@ local function loadProperties(value)
 						})
 					elseif zone.sphere then
 						zoneData = lib.zones.sphere({
-							coords = zone.coords,
+							coords = zone.sphere,
 							radius = zone.radius,
 
 							onEnter = onEnter,
