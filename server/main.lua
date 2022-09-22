@@ -180,7 +180,7 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 
 		Wait(300)
 		vehicle.set('properties', data.properties)
-		vehicle.set('display', nil)
+		vehicle.set('display')
 		vehicle.store(('%s:%s'):format(data.property, data.zoneId))
 
 		TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle stored', type = 'success'})
@@ -246,32 +246,44 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
 
 	if not isPermitted(player, zone) then return end
 
-	local vehicles = Ox.GetVehicles()
-	for k, v in pairs(vehicles) do
-		if v.plate == data.plate then
-			local seats = Ox.GetVehicleData(v.model).seats
-			for i = -1, seats - 1 do
-				if GetPedInVehicleSeat(v.entity, i) ~= 0 then
+	local vehicles = Ox.GetVehicles(true)
+	local vehicle
+	for i = 1, #vehicles do
+		local veh = vehicles[i]
+		if veh.plate == data.plate then
+			local seats = Ox.GetVehicleData(veh.model).seats
+			for j = -1, seats - 1 do
+				if GetPedInVehicleSeat(veh.entity, j) ~= 0 then
 					TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
 					return
 				end
 			end
 
-			local vehicle = Vehicle(v.netid)
-			vehicle.despawn()
+			vehicle = veh
 			break
 		end
 	end
 
-	local vehicle = MySQL.single.await('SELECT plate, model, data FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
-
 	if vehicle and zone.vehicles[Ox.GetVehicleData(vehicle.model).type] then
-		vehicle.data = json.decode(vehicle.data)
-		vehicle.data.display = nil
-		MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), json.encode(vehicle.data), vehicle.plate})
+		vehicle.set('display')
+		vehicle.store(('%s:%s'):format(data.property, data.zoneId))
+
 		TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
 		TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, data.recover and 'recover' or 'move')
-	else
-		TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
+		return
+	elseif not vehicle then
+		vehicle = MySQL.single.await('SELECT plate, model, data FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
+		if vehicle and zone.vehicles[Ox.GetVehicleData(vehicle.model).type] then
+			vehicle.data = json.decode(vehicle.data)
+			vehicle.data.display = nil
+
+			MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), json.encode(vehicle.data), vehicle.plate})
+
+			TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
+			TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, data.recover and 'recover' or 'move')
+			return
+		end
 	end
+
+	TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
 end)
