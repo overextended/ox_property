@@ -14,22 +14,22 @@ repository   'https://github.com/overextended/ox_property'
 
 --[[ Manifest ]]--
 dependencies {
-	'/server:5104',
-	'/onesync',
+    '/server:5104',
+    '/onesync',
 }
 
 shared_scripts {
-	'@ox_lib/init.lua',
+    '@ox_lib/init.lua',
 }
 
 client_scripts {
-	'@ox_core/imports/client.lua',
-	'client/main.lua',
+    '@ox_core/imports/client.lua',
+    'client/main.lua',
 }
 
 server_scripts {
-	'@oxmysql/lib/MySQL.lua',
-	'@ox_core/imports/server.lua',
-	'server/main.lua',
+    '@oxmysql/lib/MySQL.lua',
+    '@ox_core/imports/server.lua',
+    'server/main.lua',
 }
 
