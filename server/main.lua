@@ -1,29 +1,3 @@
-GlobalState['VehicleClasses'] = {
-    'Compacts',
-    'Sedans',
-    'SUVs',
-    'Coupes',
-    'Muscle',
-    'Sports Classics',
-    'Sports',
-    'Super',
-    'Motorcycles',
-    'Off-road',
-    'Industrial',
-    'Utility',
-    'Vans',
-    'Cycles',
-    'Boats',
-    'Helicopters',
-    'Planes',
-    'Service',
-    'Emergency',
-    'Military',
-    'Commercial',
-    'Trains',
-    'Open Wheel'
-}
-
 local defaultPermissions = {}
 local properties = {}
 
