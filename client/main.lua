@@ -222,12 +222,20 @@ RegisterCommand('openZone', function()
 
     if next(currentZone) then
         if not next(currentZone.permitted) or (currentZone.permitted.groups and player.hasGroup(currentZone.permitted.groups)) or currentZone.permitted.owner == player.charid then
-            lib.registerContext({
-                id = 'zone_menu',
-                title = ('%s - %s'):format(currentZone.property, currentZone.name),
-                options = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
-            })
-            lib.showContext('zone_menu')
+            local data = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
+
+            if data.event then
+                TriggerEvent(data.event, data.args)
+            elseif data.serverEvent then
+                TriggerServerEvent(data.serverEvent, data.args)
+            else
+                lib.registerContext({
+                    id = 'zone_menu',
+                    title = ('%s - %s'):format(currentZone.property, currentZone.name),
+                    options = data
+                })
+                lib.showContext('zone_menu')
+            end
         else
             lib.notify({title = 'Permission Denied', type = 'error'})
         end
