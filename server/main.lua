@@ -155,7 +155,7 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
         Wait(300)
         vehicle.set('properties', data.properties)
         vehicle.set('display')
-        vehicle.store(('%s:%s'):format(data.property, data.zoneId))
+        vehicle.setStored(('%s:%s'):format(data.property, data.zoneId), true)
 
         TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle stored', type = 'success'})
         TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'store')
@@ -240,7 +240,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
 
     if vehicle and zone.vehicles[Ox.GetVehicleData(vehicle.model).type] then
         vehicle.set('display')
-        vehicle.store(('%s:%s'):format(data.property, data.zoneId))
+        vehicle.setStored(('%s:%s'):format(data.property, data.zoneId), true)
 
         TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
         TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, data.recover and 'recover' or 'move')
