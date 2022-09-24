@@ -69,6 +69,59 @@ local zoneMenus = {
         end
 
         return options
+    end,
+    wardrobe = function(currentZone)
+        local options = {}
+        local zone = GlobalState['Properties'][currentZone.property].zones[currentZone.zoneId]
+        local personalOutfits, zoneOutfits = lib.callback.await('ox_property:getOutfits', 100, {
+            property = currentZone.property,
+            zoneId = currentZone.zoneId
+        })
+
+        if zone.outfits then
+            options[#options + 1] = {
+                title = 'Zone wardrobe',
+                event = 'ox_property:outfits',
+                args = {
+                    property = currentZone.property,
+                    zoneId = currentZone.zoneId,
+                    outfitNames = zoneOutfits,
+                    zoneOutfits = true
+                }
+            }
+
+            options[#options + 1] = {
+                title = 'Save new zone outfit',
+                arrow = true,
+                event = 'ox_property:saveOutfit',
+                args = {
+                    property = currentZone.property,
+                    zoneId = currentZone.zoneId,
+                    slot = 'new',
+                    name = '',
+                    outfitNames = zoneOutfits
+                }
+            }
+        end
+
+        options[#options + 1] = {
+            title = 'Personal wardrobe',
+            event = 'ox_property:outfits',
+            args = {
+                property = currentZone.property,
+                zoneId = currentZone.zoneId,
+                outfitNames = personalOutfits
+            }
+        }
+
+        options[#options + 1] = {
+            title = 'Save new personal outfit',
+            arrow = true,
+            event = 'ox_appearance:saveOutfit',
+            args = {slot = 'new', name = ''}
+        }
+
+        return options
     end
 }
 
@@ -366,5 +419,121 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
 
         lib.registerContext(menu)
         lib.showContext('vehicle_list')
+    end
+end)
+
+RegisterNetEvent('ox_property:outfits', function(data)
+    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
+        local options = {}
+
+        for k, v in pairs(data.outfitNames) do
+            options[v] = {
+                event = data.zoneOutfits and 'ox_property:setOutfit' or 'ox_appearance:setOutfit',
+                args = data.zoneOutfits and {
+                    property = currentZone.property,
+                    zoneId = currentZone.zoneId,
+                    slot = k,
+                    name = v,
+                    outfitNames = data.outfitNames
+                } or {slot = k, name = v}
+            }
+        end
+
+        local menu = {
+            id = 'zone_wardrobe',
+            title = data.zoneOutfits and ('%s - %s - Wardrobe'):format(currentZone.property, currentZone.name) or 'Personal Wardrobe',
+            menu = 'zone_menu',
+            options = options
+        }
+
+        lib.registerContext(menu)
+        lib.showContext('zone_wardrobe')
+    end
+end)
+
+AddEventHandler('ox_property:setOutfit', function(data)
+    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
+        lib.registerContext({
+            id = 'set_outfit',
+            title = data.name,
+            menu = 'zone_wardrobe',
+            options = {
+                {
+                    title = 'Wear',
+                    serverEvent = 'ox_property:applyOutfit',
+                    args = {
+                        property = currentZone.property,
+                        zoneId = currentZone.zoneId,
+                        slot = data.slot
+                    }
+                },
+                {
+                    title = 'Update',
+                    event = 'ox_property:saveOutfit',
+                    args = {
+                        property = currentZone.property,
+                        zoneId = currentZone.zoneId,
+                        slot = data.slot,
+                        name = data.name,
+                        outfitNames = data.outfitNames
+                    }
+                }
+            }
+        })
+
+        lib.showContext('set_outfit')
+    end
+end)
+
+local function getTableSize(t)
+    local count = 0
+    for _, __ in pairs(t) do
+        count = count + 1
+    end
+    return count
+end
+
+AddEventHandler('ox_property:saveOutfit', function(data)
+    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
+        if data.slot == 'new' then
+            data.slot = getTableSize(data.outfitNames) + 1
+            local name = lib.inputDialog('New Zone Outfit', {'Outfit Name'})
+
+            if name then
+                local appearance = exports['fivem-appearance']:getPedAppearance(cache.ped)
+                data.outfitNames[data.slot] = name[1]
+
+                TriggerServerEvent('ox_property:saveOutfit', data, appearance)
+            end
+        else
+            local input = lib.inputDialog(('Update %s'):format(data.name), {'Outfit Name (leave blank to delete)'})
+
+            local appearance = exports['fivem-appearance']:getPedAppearance(cache.ped)
+            data.outfitNames[data.slot] = input?[1]
+
+            TriggerServerEvent('ox_property:saveOutfit', data, appearance)
+        end
+	end
+end)
+
+RegisterNetEvent('ox_property:applyOutfit', function(appearance)
+    if not appearance.model then appearance.model = 'mp_m_freemode_01' end
+
+    if lib.progressCircle({
+        duration = 3000,
+        position = 'bottom',
+        useWhileDead = false,
+        canCancel = true,
+        disable = {
+            car = true,
+        },
+        anim = {
+            dict = 'missmic4',
+            clip = 'michael_tux_fidget'
+        },
+    }) then
+        exports['fivem-appearance']:setPlayerAppearance(appearance)
+
+        TriggerServerEvent('ox_appearance:save', appearance)
     end
 end)

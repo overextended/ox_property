@@ -261,3 +261,31 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
 
     TriggerClientEvent('ox_lib:notify', player.source, {title = data.recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
 end)
+
+local ox_appearance = exports.ox_appearance
+lib.callback.register('ox_property:getOutfits', function(source, data)
+    local player = Ox.GetPlayer(source)
+    local zone = properties[data.property].zones[data.zoneId]
+
+    if not isPermitted(player, zone) then return end
+
+    return ox_appearance:outfitNames(player.charid) or {}, ox_appearance:outfitNames(('%s:%s'):format(data.property, data.zoneId)) or {}
+end)
+
+RegisterNetEvent('ox_property:saveOutfit', function(data, appearance)
+    local player = Ox.GetPlayer(source)
+    local zone = properties[data.property].zones[data.zoneId]
+
+    if not isPermitted(player, zone) then return end
+
+    ox_appearance:saveOutfit(('%s:%s'):format(data.property, data.zoneId), appearance, data.slot, data.outfitNames)
+end)
+
+RegisterNetEvent('ox_property:applyOutfit', function(data)
+    local player = Ox.GetPlayer(source)
+    local zone = properties[data.property].zones[data.zoneId]
+
+    if not isPermitted(player, zone) then return end
+
+    TriggerClientEvent('ox_property:applyOutfit', source, ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.zoneId), data.slot) or {})
+end)
