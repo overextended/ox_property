@@ -188,6 +188,8 @@ local function loadProperties(value)
                     local onExit = function(self)
                         if currentZone.property == self.property and currentZone.zoneId == self.zoneId then
                             currentZone = {}
+                            if lib.getOpenContextMenu() == 'zone_menu' then lib.hideContext() end
+                            if lib.getOpenMenu() == 'zone_menu' then lib.hideMenu() end
                         end
                     end
 
