@@ -129,7 +129,7 @@ exports('registerZoneMenu', function(zone, menu)
     zoneMenus[zone] = menu
 end)
 
-function nearbyPoint(point)
+local function nearbyPoint(point)
     DrawMarker(2, point.coords.x, point.coords.y, point.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.15, 30, 30, 150, 222, false, false, 0, true, false, false, false)
 end
 
