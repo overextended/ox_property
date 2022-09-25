@@ -68,7 +68,7 @@ local zoneMenus = {
             }
         end
 
-        return options
+        return {options = options}, 'context'
     end,
     wardrobe = function(currentZone)
         local options = {}
@@ -121,7 +121,7 @@ local zoneMenus = {
             args = {slot = 'new', name = ''}
         }
 
-        return options
+        return {options = options}, 'context'
     end
 }
 
@@ -275,17 +275,32 @@ RegisterCommand('openZone', function()
 
     if next(currentZone) then
         if not next(currentZone.permitted) or (currentZone.permitted.groups and player.hasGroup(currentZone.permitted.groups)) or currentZone.permitted.owner == player.charid then
-            local data = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
+            local data, type = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
 
             if data.event then
                 TriggerEvent(data.event, data.args)
             elseif data.serverEvent then
                 TriggerServerEvent(data.serverEvent, data.args)
-            else
+            elseif type == 'menu' then
+                lib.registerMenu({
+                    id = 'zone_menu',
+                    title = data.title or currentZone.name,
+                    options = data.options,
+                    position = data.position or 'top-left',
+                    disableInput = data.disableInput,
+                    canClose = data.canClose,
+                    onClose = data.onClose,
+                    onSelected = data.onSelected,
+                    onSideScroll = data.onSideScroll,
+                }, data.cb)
+                lib.showMenu('zone_menu')
+            elseif type == 'context' then
                 lib.registerContext({
                     id = 'zone_menu',
-                    title = ('%s - %s'):format(currentZone.property, currentZone.name),
-                    options = data
+                    title = data.title or ('%s - %s'):format(currentZone.property, currentZone.name),
+                    canClose = data.canClose,
+                    onExit = data.onExit,
+                    options = data.options
                 })
                 lib.showContext('zone_menu')
             end
