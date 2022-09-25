@@ -25,7 +25,7 @@ local zoneMenus = {
                 {label = 'Property stashes', values = stashesList or {'None'}, description = 'View and edit stash permissions'},
                 {label = 'Property zones', values = zonesList or {'None'}, description = 'View and edit zone permissions'},
             },
-        }, 'menu'
+        }, 'list'
     end,
     parking = function(currentZone)
         local options = {}
@@ -291,7 +291,7 @@ RegisterCommand('openZone', function()
                 TriggerEvent(data.event, data.args)
             elseif data.serverEvent then
                 TriggerServerEvent(data.serverEvent, data.args)
-            elseif type == 'menu' then
+            elseif type == 'list' then
                 lib.registerMenu({
                     id = 'zone_menu',
                     title = data.title or currentZone.name,
