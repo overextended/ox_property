@@ -6,18 +6,26 @@ local currentZone = {}
 local zoneMenus = {
     management = function(currentZone)
         local property = properties[currentZone.property]
+
+        local stashesList = {}
+        for i = 1, #property.stashes do
+            stashesList[#stashesList + 1] = property.stashes[i].name
+        end
+        if not next(stashesList) then stashesList = false end
+
+        local zonesList = {}
+        for i = 1, #property.zones do
+            zonesList[#zonesList + 1] = property.zones[i].name
+        end
+        if not next(zonesList) then zonesList = false end
+
         return {
-            {
-                title = 'Stashes',
-                description = 'View the stashes for this property',
-                metadata = {['Count'] = property.stashes and #property.stashes or 0},
+            options = {
+                {label = currentZone.property, description = 'Set permissions for the whole property'},
+                {label = 'Property stashes', values = stashesList or {'None'}, description = 'View and edit stash permissions'},
+                {label = 'Property zones', values = zonesList or {'None'}, description = 'View and edit zone permissions'},
             },
-            {
-                title = 'Zones',
-                description = 'View the zones for this property',
-                metadata = {['Count'] = property.zones and #property.zones or 0},
-            }
-        }
+        }, 'menu'
     end,
     parking = function(currentZone)
         local options = {}
