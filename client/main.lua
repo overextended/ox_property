@@ -2,6 +2,8 @@ local table = lib.table
 local properties = {}
 local components = {}
 local currentZone = {}
+local zoneContexts = {zone_menu = true}
+local zoneLists = {zone_menu = true}
 
 local zoneMenus = {
     management = function(currentZone)
@@ -133,8 +135,30 @@ local zoneMenus = {
     end
 }
 
-exports('registerZoneMenu', function(zone, menu)
+exports('registerZoneMenu', function(zone, menu, subMenus)
     zoneMenus[zone] = menu
+
+    if type(subMenus) == 'table' then
+        if subMenus.zoneContexts then
+            if type(subMenus.zoneContexts) == 'table' then
+                for i = 1, #subMenus.zoneContexts do
+                    zoneContexts[subMenus.zoneContexts[i]] = true
+                end
+            elseif type(subMenus.zoneContexts) == 'string' then
+                zoneContexts[subMenus.zoneContexts] = true
+            end
+        end
+
+        if subMenus.zoneLists then
+            if type(subMenus.zoneLists) == 'table' then
+                for i = 1, #subMenus.zoneLists do
+                    zoneLists[subMenus.zoneLists[i]] = true
+                end
+            elseif type(subMenus.zoneLists) == 'string' then
+                zoneLists[subMenus.zoneLists] = true
+            end
+        end
+    end
 end)
 
 local function nearbyPoint(point)
@@ -196,8 +220,8 @@ local function loadProperties(value)
                     local onExit = function(self)
                         if currentZone.property == self.property and currentZone.zoneId == self.zoneId then
                             currentZone = {}
-                            if lib.getOpenContextMenu() == 'zone_menu' then lib.hideContext() end
-                            if lib.getOpenMenu() == 'zone_menu' then lib.hideMenu() end
+                            if zoneContexts[lib.getOpenContextMenu()] then lib.hideContext() end
+                            if zoneLists[lib.getOpenMenu()] then lib.hideMenu() end
                         end
                     end
 
@@ -275,6 +299,8 @@ AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, r
 end)
 
 RegisterCommand('openZone', function()
+    if zoneContexts[lib.getOpenContextMenu()] then lib.hideContext() end
+    if zoneLists[lib.getOpenMenu()] then lib.hideMenu() end
     if IsPauseMenuActive() or IsNuiFocused() then return end
 
     local closestPoint = lib.points.closest()
