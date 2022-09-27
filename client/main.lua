@@ -225,6 +225,7 @@ local function loadProperties(value)
                         end
                     end
 
+                    local zoneData
                     if zone.points then
                         zoneData = lib.zones.poly({
                             points = zone.points,
