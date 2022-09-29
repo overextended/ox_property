@@ -312,13 +312,13 @@ RegisterCommand('openZone', function()
 
     if next(currentZone) then
         if not next(currentZone.permitted) or (currentZone.permitted.groups and player.hasGroup(currentZone.permitted.groups)) or currentZone.permitted.owner == player.charid then
-            local data, type = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
+            local data, menuType = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
 
             if data.event then
                 TriggerEvent(data.event, data.args)
             elseif data.serverEvent then
                 TriggerServerEvent(data.serverEvent, data.args)
-            elseif type == 'list' then
+            elseif menuType == 'list' then
                 lib.registerMenu({
                     id = 'zone_menu',
                     title = data.title or currentZone.name,
@@ -331,7 +331,7 @@ RegisterCommand('openZone', function()
                     onSideScroll = data.onSideScroll,
                 }, data.cb)
                 lib.showMenu('zone_menu')
-            elseif type == 'context' then
+            elseif menuType == 'context' then
                 local menu = {
                     id = 'zone_menu',
                     title = data.title or ('%s - %s'):format(currentZone.property, currentZone.name),
@@ -340,8 +340,10 @@ RegisterCommand('openZone', function()
                     options = data.options
                 }
 
-                for i = 1, #data.subMenus do
-                    menu[i] = data.subMenus[i]
+                if type(data.subMenus) == 'table' then
+                    for i = 1, #data.subMenus do
+                        menu[i] = data.subMenus[i]
+                    end
                 end
 
                 lib.registerContext(menu)
