@@ -332,13 +332,19 @@ RegisterCommand('openZone', function()
                 }, data.cb)
                 lib.showMenu('zone_menu')
             elseif type == 'context' then
-                lib.registerContext({
+                local menu = {
                     id = 'zone_menu',
                     title = data.title or ('%s - %s'):format(currentZone.property, currentZone.name),
                     canClose = data.canClose,
                     onExit = data.onExit,
                     options = data.options
-                })
+                }
+
+                for i = 1, #data.subMenus do
+                    menu[i] = data.subMenus[i]
+                end
+
+                lib.registerContext(menu)
                 lib.showContext('zone_menu')
             end
         else
