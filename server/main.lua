@@ -6,7 +6,7 @@ local function loadResourceDataFiles(property)
     if property then
         sets[1] = {[property] = properties[property]}
     else
-        local resource = GetInvokingResource() or GetCurrentResourceName()
+        local resource = GetInvokingResource() or cache.resource
         local system = os.getenv('OS')
         local command = system and system:match('Windows') and 'dir "%s/" /b' or 'ls "%s/"'
         local path = GetResourcePath(resource)
@@ -76,11 +76,9 @@ end
 exports('loadDataFiles', loadResourceDataFiles)
 
 AddEventHandler('onResourceStart', function(resource)
-    if resource == GetCurrentResourceName() then
-        loadResourceDataFiles()
-    end
+    if resource ~= cache.resource then return end
+    loadResourceDataFiles()
 end)
-
 
 local function isPermitted(player, zone)
     if next(zone.permitted) and not (zone.permitted.groups and player.hasGroup(zone.permitted.groups)) and zone.permitted.owner ~= player.charid then
