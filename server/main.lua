@@ -182,7 +182,7 @@ local function findClearSpawn(spawns, entities)
             return {
                 coords = spawn.xyz,
                 heading = spawn.w + rotate * 180,
-                id = i,
+                slot = i,
                 rotate = rotate == 1
             }
         else
