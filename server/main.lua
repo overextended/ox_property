@@ -114,6 +114,32 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
     return vehicles, zoneVehicles, Ox.GetVehicleData(vehicleModels)
 end)
 
+local function clearVehicleOfPassengers(vehicle)
+    local passengers = {}
+    for i = -1, vehicle.data.seats - 1 do
+        local ped = GetPedInVehicleSeat(vehicle.entity, i)
+        if ped ~= 0 then
+            passengers[#passengers + 1] = ped
+            TaskLeaveVehicle(ped, vehicle.entity, 0)
+        end
+    end
+
+    local empty
+    while not empty do
+        Wait(100)
+        empty = true
+        for i = 1, #passengers do
+            local passenger = passengers[i]
+            if GetVehiclePedIsIn(passenger) == vehicle.entity then
+                empty = false
+            end
+        end
+    end
+
+    Wait(300)
+end
+exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
+
 RegisterServerEvent('ox_property:storeVehicle', function(data)
     local player = Ox.GetPlayer(source)
     local zone = properties[data.property].zones[data.zoneId]
@@ -129,28 +155,8 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
     vehicle.data = Ox.GetVehicleData(vehicle.model)
 
     if player.charid == vehicle.owner and zone.vehicles[vehicle.data.type] then
-        local passengers = {}
-        for i = -1, vehicle.data.seats - 1 do
-            local ped = GetPedInVehicleSeat(vehicle.entity, i)
-            if ped ~= 0 then
-                passengers[#passengers + 1] = ped
-                TaskLeaveVehicle(ped, vehicle.entity, 0)
-            end
-        end
+        clearVehicleOfPassengers(vehicle)
 
-        local empty
-        while not empty do
-            Wait(100)
-            empty = true
-            for i = 1, #passengers do
-                local passenger = passengers[i]
-                if GetVehiclePedIsIn(passenger) == vehicle.entity then
-                    empty = false
-                end
-            end
-        end
-
-        Wait(300)
         vehicle.set('properties', data.properties)
         vehicle.set('display')
         vehicle.setStored(('%s:%s'):format(data.property, data.zoneId), true)
