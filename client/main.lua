@@ -300,8 +300,8 @@ AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, r
 end)
 
 RegisterCommand('openZone', function()
-    if zoneContexts[lib.getOpenContextMenu()] then lib.hideContext() end
-    if zoneLists[lib.getOpenMenu()] then lib.hideMenu() end
+    if zoneContexts[lib.getOpenContextMenu()] then lib.hideContext() return end
+    if zoneLists[lib.getOpenMenu()] then lib.hideMenu() return end
     if IsPauseMenuActive() or IsNuiFocused() then return end
 
     local closestPoint = lib.points.closest()
