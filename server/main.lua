@@ -130,19 +130,21 @@ local function clearVehicleOfPassengers(vehicle)
         end
     end
 
-    local empty
-    while not empty do
-        Wait(100)
-        empty = true
-        for i = 1, #passengers do
-            local passenger = passengers[i]
-            if GetVehiclePedIsIn(passenger) == vehicle.entity then
-                empty = false
+    if next(passengers) then
+        local empty
+        while not empty do
+            Wait(100)
+            empty = true
+            for i = 1, #passengers do
+                local passenger = passengers[i]
+                if GetVehiclePedIsIn(passenger) == vehicle.entity then
+                    empty = false
+                end
             end
         end
-    end
 
-    Wait(300)
+        Wait(300)
+    end
 end
 exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
 
