@@ -87,6 +87,9 @@ local function isPermitted(player, zone)
 
     if zone.permitted.owner == player.charid then return true end
 
+    local groupOwner = GlobalState[('group.%s'):format(zone.permitted.owner)]
+    if groupOwner and player.hasGroup({[groupOwner.name] = #groupOwner.grades}) then return true end
+
     TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
     return false
 end
