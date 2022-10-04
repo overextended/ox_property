@@ -370,18 +370,26 @@ end)
 
 RegisterKeyMapping('openZone', 'Zone Menu', 'keyboard', 'e')
 
+local function checkCurrentZone(data)
+    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then return true end
+
+    lib.notify({title = 'Zone Mismatch', type = 'error'})
+    return false
+end
+exports('checkCurrentZone', checkCurrentZone)
+
 RegisterNetEvent('ox_property:storeVehicle', function(data)
-    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
-        if cache.vehicle then
-            if cache.seat == -1 then
-                data.properties = lib.getVehicleProperties(cache.vehicle)
-                TriggerServerEvent('ox_property:storeVehicle', data)
-            else
-                lib.notify({title = "You are not in the driver's seat", type = 'error'})
-            end
+    if not checkCurrentZone(data) then return end
+
+    if cache.vehicle then
+        if cache.seat == -1 then
+            data.properties = lib.getVehicleProperties(cache.vehicle)
+            TriggerServerEvent('ox_property:storeVehicle', data)
         else
-            lib.notify({title = 'You are not in a vehicle', type = 'error'})
+            lib.notify({title = "You are not in the driver's seat", type = 'error'})
         end
+    else
+        lib.notify({title = 'You are not in a vehicle', type = 'error'})
     end
 end)
 
@@ -410,152 +418,153 @@ end
 exports('getZoneEntities', getZoneEntities)
 
 RegisterNetEvent('ox_property:retrieveVehicle', function(data)
-    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
-        data.entities = getZoneEntities()
-        TriggerServerEvent('ox_property:retrieveVehicle', data)
-    end
+    if not checkCurrentZone(data) then return end
+
+    data.entities = getZoneEntities()
+    TriggerServerEvent('ox_property:retrieveVehicle', data)
 end)
 
 RegisterNetEvent('ox_property:vehicleList', function(data)
-    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
-        local options = {}
-        local subMenus = {}
-        for i = 1, #data.vehicles do
-            local vehicle = data.vehicles[i]
-            vehicle.data = data.vehicleData[vehicle.model]
+    if not checkCurrentZone(data) then return end
 
-            local zoneName = not vehicle.stored and 'Unknown' or vehicle.stored:gsub('^%l', string.upper)
-            if vehicle.stored and vehicle.stored:find(':') then
-                local property, zoneId = string.strsplit(':', vehicle.stored)
-                zoneId = tonumber(zoneId)
-                if currentZone.property == property and currentZone.zoneId == zoneId then
-                    zoneName = 'Current Zone'
-                elseif properties[property]?.zones?[zoneId] then
-                    zoneName = ('%s - %s'):format(property, properties[property].zones[zoneId].name)
-                else
-                    zoneName = 'Unknown'
-                end
-            end
+    local options = {}
+    local subMenus = {}
 
-            options[('%s - %s'):format(vehicle.data.name, vehicle.plate)] = {
-                menu = vehicle.plate,
-                metadata = {['Location'] = zoneName}
-            }
+    for i = 1, #data.vehicles do
+        local vehicle = data.vehicles[i]
+        vehicle.data = data.vehicleData[vehicle.model]
 
-            local subOptions = {}
-            if vehicle.stored == ('%s:%s'):format(data.property, data.zoneId) then
-                subOptions['Retrieve'] = {
-                    event = 'ox_property:retrieveVehicle',
-                    args = {
-                        property = currentZone.property,
-                        zoneId = currentZone.zoneId,
-                        plate = vehicle.plate
-                    }
-                }
-            elseif zoneName ~= 'Unknown' and vehicle.stored:find(':') then
-                subOptions['Move'] = {
-                    serverEvent = 'ox_property:moveVehicle',
-                    args = {
-                        property = currentZone.property,
-                        zoneId = currentZone.zoneId,
-                        plate = vehicle.plate
-                    }
-                }
+        local zoneName = not vehicle.stored and 'Unknown' or vehicle.stored:gsub('^%l', string.upper)
+        if vehicle.stored and vehicle.stored:find(':') then
+            local property, zoneId = string.strsplit(':', vehicle.stored)
+            zoneId = tonumber(zoneId)
+            if currentZone.property == property and currentZone.zoneId == zoneId then
+                zoneName = 'Current Zone'
+            elseif properties[property]?.zones?[zoneId] then
+                zoneName = ('%s - %s'):format(property, properties[property].zones[zoneId].name)
             else
-                subOptions['Recover'] = {
-                    serverEvent = 'ox_property:moveVehicle',
-                    args = {
-                        property = currentZone.property,
-                        zoneId = currentZone.zoneId,
-                        plate = vehicle.plate,
-                        recover = true
-                    }
-                }
+                zoneName = 'Unknown'
             end
-            subMenus[#subMenus + 1] = {
-                id = vehicle.plate,
-                title = vehicle.plate,
-                menu = 'vehicle_list',
-                options = subOptions
+        end
+
+        options[('%s - %s'):format(vehicle.data.name, vehicle.plate)] = {
+            menu = vehicle.plate,
+            metadata = {['Location'] = zoneName}
+        }
+
+        local subOptions = {}
+        if vehicle.stored == ('%s:%s'):format(data.property, data.zoneId) then
+            subOptions['Retrieve'] = {
+                event = 'ox_property:retrieveVehicle',
+                args = {
+                    property = currentZone.property,
+                    zoneId = currentZone.zoneId,
+                    plate = vehicle.plate
+                }
+            }
+        elseif zoneName ~= 'Unknown' and vehicle.stored:find(':') then
+            subOptions['Move'] = {
+                serverEvent = 'ox_property:moveVehicle',
+                args = {
+                    property = currentZone.property,
+                    zoneId = currentZone.zoneId,
+                    plate = vehicle.plate
+                }
+            }
+        else
+            subOptions['Recover'] = {
+                serverEvent = 'ox_property:moveVehicle',
+                args = {
+                    property = currentZone.property,
+                    zoneId = currentZone.zoneId,
+                    plate = vehicle.plate,
+                    recover = true
+                }
             }
         end
-
-        local menu = {
-            id = 'vehicle_list',
-            title = data.zoneOnly and ('%s - %s - Vehicles'):format(currentZone.property, currentZone.name) or 'All Vehicles',
-            menu = 'zone_menu',
-            options = options
+        subMenus[#subMenus + 1] = {
+            id = vehicle.plate,
+            title = vehicle.plate,
+            menu = 'vehicle_list',
+            options = subOptions
         }
-        for i = 1, #subMenus do
-            menu[i] = subMenus[i]
-        end
-
-        lib.registerContext(menu)
-        lib.showContext('vehicle_list')
     end
+
+    local menu = {
+        id = 'vehicle_list',
+        title = data.zoneOnly and ('%s - %s - Vehicles'):format(currentZone.property, currentZone.name) or 'All Vehicles',
+        menu = 'zone_menu',
+        options = options
+    }
+    for i = 1, #subMenus do
+        menu[i] = subMenus[i]
+    end
+
+    lib.registerContext(menu)
+    lib.showContext('vehicle_list')
 end)
 
 RegisterNetEvent('ox_property:outfits', function(data)
-    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
-        local options = {}
+    if not checkCurrentZone(data) then return end
 
-        for k, v in pairs(data.outfitNames) do
-            options[v] = {
-                event = data.zoneOutfits and 'ox_property:setOutfit' or 'ox_appearance:setOutfit',
-                args = data.zoneOutfits and {
-                    property = currentZone.property,
-                    zoneId = currentZone.zoneId,
-                    slot = k,
-                    name = v,
-                    outfitNames = data.outfitNames
-                } or {slot = k, name = v}
-            }
-        end
+    local options = {}
 
-        local menu = {
-            id = 'zone_wardrobe',
-            title = data.zoneOutfits and ('%s - %s - Wardrobe'):format(currentZone.property, currentZone.name) or 'Personal Wardrobe',
-            menu = 'zone_menu',
-            options = options
+    for k, v in pairs(data.outfitNames) do
+        options[v] = {
+            event = data.zoneOutfits and 'ox_property:setOutfit' or 'ox_appearance:setOutfit',
+            args = data.zoneOutfits and {
+                property = currentZone.property,
+                zoneId = currentZone.zoneId,
+                slot = k,
+                name = v,
+                outfitNames = data.outfitNames
+            } or {slot = k, name = v}
         }
-
-        lib.registerContext(menu)
-        lib.showContext('zone_wardrobe')
     end
+
+    local menu = {
+        id = 'zone_wardrobe',
+        title = data.zoneOutfits and ('%s - %s - Wardrobe'):format(currentZone.property, currentZone.name) or 'Personal Wardrobe',
+        menu = 'zone_menu',
+        options = options
+    }
+
+    lib.registerContext(menu)
+    lib.showContext('zone_wardrobe')
 end)
 
 AddEventHandler('ox_property:setOutfit', function(data)
-    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
-        lib.registerContext({
-            id = 'set_outfit',
-            title = data.name,
-            menu = 'zone_wardrobe',
-            options = {
-                {
-                    title = 'Wear',
-                    serverEvent = 'ox_property:applyOutfit',
-                    args = {
-                        property = currentZone.property,
-                        zoneId = currentZone.zoneId,
-                        slot = data.slot
-                    }
-                },
-                {
-                    title = 'Update',
-                    event = 'ox_property:saveOutfit',
-                    args = {
-                        property = currentZone.property,
-                        zoneId = currentZone.zoneId,
-                        slot = data.slot,
-                        name = data.name,
-                        outfitNames = data.outfitNames
-                    }
+    if not checkCurrentZone(data) then return end
+
+    lib.registerContext({
+        id = 'set_outfit',
+        title = data.name,
+        menu = 'zone_wardrobe',
+        options = {
+            {
+                title = 'Wear',
+                serverEvent = 'ox_property:applyOutfit',
+                args = {
+                    property = currentZone.property,
+                    zoneId = currentZone.zoneId,
+                    slot = data.slot
+                }
+            },
+            {
+                title = 'Update',
+                event = 'ox_property:saveOutfit',
+                args = {
+                    property = currentZone.property,
+                    zoneId = currentZone.zoneId,
+                    slot = data.slot,
+                    name = data.name,
+                    outfitNames = data.outfitNames
                 }
             }
-        })
+        }
+    })
 
-        lib.showContext('set_outfit')
-    end
+    lib.showContext('set_outfit')
 end)
 
 local function getTableSize(t)
@@ -567,26 +576,26 @@ local function getTableSize(t)
 end
 
 AddEventHandler('ox_property:saveOutfit', function(data)
-    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then
-        if data.slot == 'new' then
-            data.slot = getTableSize(data.outfitNames) + 1
-            local name = lib.inputDialog('New Zone Outfit', {'Outfit Name'})
+    if not checkCurrentZone(data) then return end
 
-            if name then
-                local appearance = exports['fivem-appearance']:getPedAppearance(cache.ped)
-                data.outfitNames[data.slot] = name[1]
+    if data.slot == 'new' then
+        data.slot = getTableSize(data.outfitNames) + 1
+        local name = lib.inputDialog('New Zone Outfit', {'Outfit Name'})
 
-                TriggerServerEvent('ox_property:saveOutfit', data, appearance)
-            end
-        else
-            local input = lib.inputDialog(('Update %s'):format(data.name), {'Outfit Name (leave blank to delete)'})
-
+        if name then
             local appearance = exports['fivem-appearance']:getPedAppearance(cache.ped)
-            data.outfitNames[data.slot] = input?[1]
+            data.outfitNames[data.slot] = name[1]
 
             TriggerServerEvent('ox_property:saveOutfit', data, appearance)
         end
-	end
+    else
+        local input = lib.inputDialog(('Update %s'):format(data.name), {'Outfit Name (leave blank to delete)'})
+
+        local appearance = exports['fivem-appearance']:getPedAppearance(cache.ped)
+        data.outfitNames[data.slot] = input?[1]
+
+        TriggerServerEvent('ox_property:saveOutfit', data, appearance)
+    end
 end)
 
 RegisterNetEvent('ox_property:applyOutfit', function(appearance)
