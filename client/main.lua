@@ -299,6 +299,21 @@ AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, r
     loadProperties(value)
 end)
 
+local function isPermitted()
+    if not next(currentZone.permitted) then return true end
+
+    if currentZone.permitted.groups and player.hasGroup(currentZone.permitted.groups) then return true end
+
+    if currentZone.permitted.owner == player.charid then return true end
+
+    local groupOwner = GlobalState[('group.%s'):format(currentZone.permitted.owner)]
+    if groupOwner and #groupOwner.grades == player.groups[currentZone.permitted.owner] then return true end
+
+    lib.notify({title = 'Permission Denied', type = 'error'})
+    return false
+end
+exports('isPermitted', isPermitted)
+
 RegisterCommand('openZone', function()
     if zoneContexts[lib.getOpenContextMenu()] then lib.hideContext() return end
     if zoneLists[lib.getOpenMenu()] then lib.hideMenu() return end
@@ -311,46 +326,44 @@ RegisterCommand('openZone', function()
     end
 
     if next(currentZone) then
-        if not next(currentZone.permitted) or (currentZone.permitted.groups and player.hasGroup(currentZone.permitted.groups)) or currentZone.permitted.owner == player.charid then
-            local data, menuType = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
+        if not isPermitted() then return end
 
-            if data.event then
-                TriggerEvent(data.event, data.args)
-            elseif data.serverEvent then
-                TriggerServerEvent(data.serverEvent, data.args)
-            elseif menuType == 'list' then
-                lib.registerMenu({
-                    id = 'zone_menu',
-                    title = data.title or currentZone.name,
-                    options = data.options,
-                    position = data.position or 'top-left',
-                    disableInput = data.disableInput,
-                    canClose = data.canClose,
-                    onClose = data.onClose,
-                    onSelected = data.onSelected,
-                    onSideScroll = data.onSideScroll,
-                }, data.cb)
-                lib.showMenu('zone_menu')
-            elseif menuType == 'context' then
-                local menu = {
-                    id = 'zone_menu',
-                    title = data.title or ('%s - %s'):format(currentZone.property, currentZone.name),
-                    canClose = data.canClose,
-                    onExit = data.onExit,
-                    options = data.options
-                }
+        local data, menuType = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
 
-                if type(data.subMenus) == 'table' then
-                    for i = 1, #data.subMenus do
-                        menu[i] = data.subMenus[i]
-                    end
+        if data.event then
+            TriggerEvent(data.event, data.args)
+        elseif data.serverEvent then
+            TriggerServerEvent(data.serverEvent, data.args)
+        elseif menuType == 'list' then
+            lib.registerMenu({
+                id = 'zone_menu',
+                title = data.title or currentZone.name,
+                options = data.options,
+                position = data.position or 'top-left',
+                disableInput = data.disableInput,
+                canClose = data.canClose,
+                onClose = data.onClose,
+                onSelected = data.onSelected,
+                onSideScroll = data.onSideScroll,
+            }, data.cb)
+            lib.showMenu('zone_menu')
+        elseif menuType == 'context' then
+            local menu = {
+                id = 'zone_menu',
+                title = data.title or ('%s - %s'):format(currentZone.property, currentZone.name),
+                canClose = data.canClose,
+                onExit = data.onExit,
+                options = data.options
+            }
+
+            if type(data.subMenus) == 'table' then
+                for i = 1, #data.subMenus do
+                    menu[i] = data.subMenus[i]
                 end
-
-                lib.registerContext(menu)
-                lib.showContext('zone_menu')
             end
-        else
-            lib.notify({title = 'Permission Denied', type = 'error'})
+
+            lib.registerContext(menu)
+            lib.showContext('zone_menu')
         end
     end
 end)
