@@ -81,11 +81,14 @@ AddEventHandler('onResourceStart', function(resource)
 end)
 
 local function isPermitted(player, zone)
-    if next(zone.permitted) and not (zone.permitted.groups and player.hasGroup(zone.permitted.groups)) and zone.permitted.owner ~= player.charid then
-        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
-        return false
-    end
-    return true
+    if not next(zone.permitted) then return true end
+
+    if zone.permitted.groups and player.hasGroup(zone.permitted.groups) then return true end
+
+    if zone.permitted.owner == player.charid then return true end
+
+    TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
+    return false
 end
 exports('isPermitted', isPermitted)
 
