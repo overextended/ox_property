@@ -168,11 +168,12 @@ end
 local function loadProperties(value)
     for k, v in pairs(value) do
         local create = true
-        if not properties[k] and components[k] then
+        if (not properties[k] or v.refresh) and components[k] then
             RemoveBlip(components[k][1])
             for i = 2, #components[k] do
                 components[k][i]:remove()
             end
+            v.refresh = nil
         elseif properties[k] then
             create = false
         end
