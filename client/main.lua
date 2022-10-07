@@ -328,7 +328,7 @@ RegisterCommand('openZone', function()
     if next(currentZone) then
         if not isPermitted() then return end
 
-        local data, menuType = zoneMenus[currentZone.type]({property = currentZone.property, zoneId = currentZone.zoneId})
+        local data, menuType = zoneMenus[currentZone.type](currentZone)
 
         if data.event then
             TriggerEvent(data.event, data.args)
