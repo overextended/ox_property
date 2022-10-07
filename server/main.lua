@@ -393,10 +393,41 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
         end
     end
 
+
+    local balance = exports.pefcl:getDefaultAccountBalance(player.source).data
+    local amount = recover and 1000 or 500
+
+    local owner = GlobalState[('group.%s'):format(zone.permitted.owner)]
+    local from
+    if owner then
+        from = owner.label
+    else
+        owner = MySQL.single.await('SELECT firstname, lastname FROM characters WHERE charid = ?', {zone.permitted.owner})
+        from = ('%s %s'):format(owner.firstname, owner.lastname)
+    end
+
     local vehicleData = Ox.GetVehicleData(vehicle.model)
+    local message = recover and '%s Recovery' or '%s Move'
+    message = message:format(vehicleData.name)
+
     if not zone.vehicles[vehicleData.type] then
         TriggerClientEvent('ox_lib:notify', player.source, {title = recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
         return
+    end
+
+    if zone.permitted.owner ~= player.charid then
+        if balance >= amount then
+            exports.pefcl:removeBankBalance(player.source, {amount = amount, message = message})
+        else
+            exports.pefcl:createInvoice(player.source, {
+                to = player.name,
+                toIdentifier = player.charid,
+                from = from,
+                fromIdentifier = zone.permitted.owner,
+                amount = amount,
+                message = message
+            })
+        end
     end
 
     if db then
