@@ -424,7 +424,13 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
     if zone.permitted.owner ~= player.charid then
         if balance >= amount then
             exports.pefcl:removeBankBalance(player.source, {amount = amount, message = message})
-        else
+
+            exports.pefcl:addBankBalanceByIdentifier(player.source, {
+                identifier = zone.permitted.owner,
+                amount = amount,
+                message = message
+            })
+            else
             exports.pefcl:createInvoice(player.source, {
                 to = player.name,
                 toIdentifier = player.charid,
