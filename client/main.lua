@@ -3,30 +3,313 @@ local properties = {}
 local components = {}
 local currentZone = {}
 local zoneContexts = {zone_menu = true}
-local zoneLists = {zone_menu = true}
+local zoneLists = {zone_menu = true, edit_permissions = true}
 
 local zoneMenus = {
     management = function(currentZone)
-        local property = properties[currentZone.property]
+        local displayData = lib.callback.await('ox_property:getDisplayData', 100, {
+            property = currentZone.property,
+            zoneId = currentZone.zoneId,
+            players = lib.getNearbyPlayers(cache.coords, 10, false)
+        })
 
+        local property = properties[currentZone.property]
+        local propertyComponents = {}
         local stashesList = {}
         for i = 1, #property.stashes do
             stashesList[#stashesList + 1] = property.stashes[i].name
+            propertyComponents[#propertyComponents + 1] = property.stashes[i]
         end
-        if not next(stashesList) then stashesList = false end
 
         local zonesList = {}
         for i = 1, #property.zones do
             zonesList[#zonesList + 1] = property.zones[i].name
+            propertyComponents[#propertyComponents + 1] = property.zones[i]
         end
-        if not next(zonesList) then zonesList = false end
 
         return {
             options = {
-                {label = currentZone.property, description = 'Set permissions for the whole property'},
-                {label = 'Property stashes', values = stashesList or {'None'}, description = 'View and edit stash permissions'},
-                {label = 'Property zones', values = zonesList or {'None'}, description = 'View and edit zone permissions'},
+                {
+                    label = currentZone.property,
+                    description = 'Set permissions for the whole property'
+                },
+                {
+                    label = next(stashesList) and 'Property stashes' or 'No stashes',
+                    values = next(stashesList) and stashesList or nil,
+                    description = 'View and edit stash permissions',
+                    args = {
+                        components = next(property.stashes) and property.stashes or nil
+                    }
+                },
+                {
+                    label = next(zonesList) and 'Property zones' or 'No zones',
+                    values = next(zonesList) and zonesList or nil,
+                    description = 'View and edit zone permissions',
+                    args = {
+                        components = next(property.zones) and property.zones or nil
+                    }
+                },
             },
+            cb = function(selected, scrollIndex, args)
+                local options = {}
+                if selected == 1 then
+                    local matching = true
+                    if #propertyComponents > 1 then
+                        for i = 1, #propertyComponents do
+                            if not table.matches(currentZone.permitted, propertyComponents[i].permitted) then
+                                matching = false
+                                break
+                            end
+                        end
+                    end
+
+                    options[#options + 1] = {
+                        label = matching and currentZone.property or 'Group permissions do not match',
+                        description = matching and 'Edit all property permissions once' or 'Reset property group permissions',
+                        args = {
+                            matching = matching
+                        }
+                    }
+
+                    options[#options + 1] = {
+                        label = ('Owner: %s'):format(displayData.owner),
+                        description = 'Edit owner',
+                        args = {
+                            editOwner = true
+                        }
+                    }
+
+                    if matching then
+                        options[#options + 1] = {
+                            label = 'Groups',
+                            description = 'Add group',
+                            args = {
+                                addGroup = true
+                            }
+                        }
+
+                        if currentZone.permitted.groups then
+                            for k, v in pairs(currentZone.permitted.groups) do
+                                local group
+                                for i = 1, #displayData.groups do
+                                    group = displayData.groups[i]
+                                    if group.name == k then
+                                        break
+                                    end
+                                end
+
+                                options[#options + 1] = {
+                                    label = ('%s - %s'):format(group.label, group.grades[v]),
+                                    description = 'Edit group',
+                                    args = {
+                                        group = group,
+                                        editGroup = true
+                                    }
+                                }
+                            end
+                        end
+                    end
+                elseif args.components then
+                    local component = args.components[scrollIndex]
+
+                    options[#options + 1] = {
+                        label = component.name,
+                    }
+
+                    options[#options + 1] = {
+                        label = 'Groups',
+                        description = 'Add group',
+                        args = {
+                            component = component,
+                            addGroup = true
+                        }
+                    }
+
+                    if component.permitted.groups then
+                        for k, v in pairs(component.permitted.groups) do
+                            local group
+                            for i = 1, #displayData.groups do
+                                group = displayData.groups[i]
+                                if group.name == k then
+                                    break
+                                end
+                            end
+
+                            options[#options + 1] = {
+                                label = ('%s - %s'):format(group.label, group.grades[v]),
+                                description = 'Edit group',
+                                args = {
+                                    component = component,
+                                    group = group,
+                                    editGroup = true
+                                }
+                            }
+                        end
+                    end
+                else
+                    lib.showMenu('zone_menu')
+                end
+                lib.registerMenu({
+                    id = 'edit_permissions',
+                    title = 'Property Permissions',
+                    options = options,
+                    onClose = function(keyPressed)
+                        if keyPressed == 'Backspace' then
+                            lib.showMenu('zone_menu')
+                        end
+                    end
+                },
+                function(selected, scrollIndex, args)
+                    if not args or args.matching then
+                        lib.showMenu('edit_permissions')
+                    elseif args.matching == false then
+                        local confirm = lib.alertDialog({
+                            header = 'Are You Sure?',
+                            content = 'Continuing will wipe all group permissions for the property, leaving only the owner',
+                            centered = true,
+                            cancel = true
+                        })
+
+                        if confirm then
+                            TriggerServerEvent('ox_property:resetPermitted', {
+                                property = currentZone.property,
+                                zoneId = currentZone.zoneId
+                            })
+                        end
+                    elseif args.editOwner then
+                        local input = lib.inputDialog(('Transfer Ownership of %s'):format(currentZone.property), {
+                            { type = 'select', label = 'Owner type select', options = {
+                                { value = 'groups', label = 'Group' },
+                                { value = 'nearbyPlayers', label = 'Player' },
+                            }},
+                        })
+                        Wait(100)
+                        if input then
+                            local select = {}
+                            for i = 1, #displayData[input[1]] do
+                                local option = displayData[input[1]][i]
+                                if input[1] == 'groups' then
+                                    select[#select + 1] = {
+                                        value = option.name,
+                                        label = option.label
+                                    }
+                                elseif input[1] == 'nearbyPlayers' then
+                                    select[#select + 1] = {
+                                        value = option.charid,
+                                        label = option.name
+                                    }
+                                end
+                            end
+
+                            local input2 = lib.inputDialog(('Transfer Ownership of %s'):format(currentZone.property), {
+                                {type = 'select', label = 'Owner select', options = select},
+                            })
+                            if input2 then
+                                TriggerServerEvent('ox_property:updatePermitted', {
+                                    property = currentZone.property,
+                                    zoneId = currentZone.zoneId,
+                                    change = {
+                                        owner = input2[1]
+                                    }
+                                })
+                            end
+                        end
+                    elseif args.addGroup then
+                        local component = args.component or currentZone
+                        local select = {}
+
+                        for i = 1, #displayData.groups do
+                            local option = displayData.groups[i]
+                            if not (component.permitted.groups and component.permitted.groups[option.name]) then
+                                select[#select + 1] = {
+                                    value = i,
+                                    label = option.label
+                                }
+                            end
+                        end
+
+                        local input = lib.inputDialog('Select Group to Permit', {
+                            { type = 'select', label = 'Group', options = select},
+                        })
+                        Wait(100)
+
+                        if input and next(input) then
+                            local group = displayData.groups[tonumber(input[1])]
+                            local select = {}
+                            for i = 1, #group.grades do
+                                select[#select + 1] = {
+                                    value = i,
+                                    label = group.grades[i]
+                                }
+                            end
+
+                            local input2 = lib.inputDialog('Select Grade and Above to Permit', {
+                                { type = 'select', label = 'Grade', options = select},
+                            })
+
+                            if input2 and next(input2) then
+                                local componentType, componentId
+                                if args.component then
+                                    componentType = component.zoneId and 'zones' or 'stashes'
+                                    componentId = component.zoneId or component.stashId
+                                end
+
+                                TriggerServerEvent('ox_property:updatePermitted', {
+                                    property = currentZone.property,
+                                    zoneId = currentZone.zoneId,
+                                    componentType = componentType,
+                                    componentId = componentId,
+                                    change = {
+                                        groups = {
+                                            [group.name] = input2[1]
+                                        }
+                                    }
+                                })
+                            end
+                        end
+                    elseif args.editGroup then
+                        local component = args.component or currentZone
+                        local select = {
+                            {
+                                value = 0,
+                                label = 'Remove'
+                            }
+                        }
+                        for i = 1, #args.group.grades do
+                            select[#select + 1] = {
+                                value = i,
+                                label = args.group.grades[i]
+                            }
+                        end
+
+                        local input = lib.inputDialog('Edit Permitted Grade', {
+                            { type = 'select', label = 'Grade', options = select},
+                        })
+
+                        if input and next(input) then
+                            local componentType, componentId
+                            if args.component then
+                                componentType = component.zoneId and 'zones' or 'stashes'
+                                componentId = component.zoneId or component.stashId
+                            end
+
+                            TriggerServerEvent('ox_property:updatePermitted', {
+                                property = currentZone.property,
+                                zoneId = currentZone.zoneId,
+                                componentType = componentType,
+                                componentId = componentId,
+                                change = {
+                                    groups = {
+                                        [args.group.name] = input[1]
+                                    }
+                                }
+                            })
+                        end
+                    end
+                end)
+
+                lib.showMenu('edit_permissions')
+            end
         }, 'list'
     end,
     parking = function(currentZone)

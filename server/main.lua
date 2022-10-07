@@ -96,6 +96,134 @@ local function isPermitted(player, zone)
 end
 exports('isPermitted', isPermitted)
 
+lib.callback.register('ox_property:getDisplayData', function(source, data)
+    local player = Ox.GetPlayer(source)
+    local zone = properties[data.property].zones[data.zoneId]
+
+    if not isPermitted(player, zone) then return end
+
+    local displayData = {
+        groups = MySQL.query.await('SELECT name, label, grades FROM ox_groups'),
+        nearbyPlayers = {
+            {
+                name = player.name,
+                charid = player.charid
+            }
+        }
+    }
+
+    for i = 1, #displayData.groups do
+        local group = displayData.groups[i]
+        group.grades = json.decode(group.grades)
+        if zone.permitted.owner == group.name then
+            displayData.owner = group.label
+        end
+    end
+
+    for i = 1, #data.players do
+        local nearbyPlayer = Ox.GetPlayer(GetPlayerServerId(data.players[i].id))
+        displayData.nearbyPlayers[#displayData.nearbyPlayers + 1] = {
+            name = nearbyPlayer.name,
+            charid = nearbyPlayer.charid
+        }
+        if not zone.permitted.owner and tonumber(zone.permitted.owner) == nearbyPlayer.charid then
+            displayData.owner = nearbyPlayer.name
+        end
+    end
+
+    if not displayData.owner then
+        if not zone.permitted.owner then
+            displayData.owner = 'None'
+        elseif tonumber(zone.permitted.owner) then
+            if tonumber(zone.permitted.owner) == player.charid then
+                displayData.owner = player.name
+            else
+                local names = MySQL.single.await('SELECT firstname, lastname FROM characters WHERE charid = ?', {zone.permitted.owner})
+                displayData.owner = ('%s %s'):format(names.firstname, names.lastname)
+            end
+        end
+    end
+
+    return displayData
+end)
+
+RegisterServerEvent('ox_property:updatePermitted', function(data)
+    local player = Ox.GetPlayer(source)
+    local property = properties[data.property]
+    local zone = property.zones[data.zoneId]
+
+    if not isPermitted(player, zone) then return end
+    if not next(data.change) then return end
+
+    if data.componentType and data.componentId then
+        local component = property[data.componentType][data.componentId]
+
+        if data.change.groups then
+            for k, v in pairs(data.change.groups) do
+                component.permitted.groups = component.permitted.groups or {}
+                component.permitted.groups[k] = tonumber(v) ~= 0 and tonumber(v) or nil
+            end
+        end
+
+        MySQL.update('UPDATE ox_property SET permitted = ? WHERE property = ? AND type = ? AND id = ?', {json.encode(component.permitted.owner), data.property, data.componentType, data.componentId})
+    else
+        local permitted = zone.permitted
+
+        if data.change.owner then
+            permitted.owner = tonumber(data.change.owner) or data.change.owner
+        end
+
+        if data.change.groups then
+            for k, v in pairs(data.change.groups) do
+                permitted.groups = permitted.groups or {}
+                permitted.groups[k] = tonumber(v) ~= 0 and tonumber(v) or nil
+            end
+        end
+
+        for i = 1, #property.stashes do
+            property.stashes[i].permitted = permitted
+        end
+
+        for i = 1, #property.zones do
+            property.zones[i].permitted = permitted
+        end
+
+        MySQL.update('UPDATE ox_property SET permitted = ? WHERE property = ?', {json.encode(permitted), data.property})
+    end
+
+    property.refresh = true
+    properties[data.property] = property
+    GlobalState['Properties'] = properties
+
+    TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permissions updated', type = 'success'})
+end)
+
+RegisterServerEvent('ox_property:resetPermitted', function(data)
+    local player = Ox.GetPlayer(source)
+    local property = properties[data.property]
+    local zone = property.zones[data.zoneId]
+
+    if not isPermitted(player, zone) then return end
+
+    local owner = zone.permitted.owner
+
+    for i = 1, #property.stashes do
+        property.stashes[i].permitted = {owner = owner}
+    end
+
+    for i = 1, #property.zones do
+        property.zones[i].permitted = {owner = owner}
+    end
+
+    MySQL.update('UPDATE ox_property SET permitted = ? WHERE property = ?', {json.encode({owner = owner}), data.property})
+
+    property.refresh = true
+    properties[data.property] = property
+    GlobalState['Properties'] = properties
+
+    TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permissions reset', type = 'success'})
+end)
+
 lib.callback.register('ox_property:getVehicleList', function(source, data)
     local player = Ox.GetPlayer(source)
     local zone = properties[data.property].zones[data.zoneId]
