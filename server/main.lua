@@ -341,11 +341,16 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 
     if not isPermitted(player, zone) then return end
 
-    local vehicle = MySQL.single.await('SELECT * FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
+    local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
+
+    if not vehicle or vehicle.stored ~= ('%s:%s'):format(data.property, data.zoneId) then
+        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle is not stored', type = 'error'})
+        return
+    end
 
     local spawn = findClearSpawn(zone.spawns, data.entities)
 
-    if vehicle and spawn and zone.vehicles[Ox.GetVehicleData(vehicle.model).type] then
+    if spawn and zone.vehicles[Ox.GetVehicleData(vehicle.model).type] then
         Ox.CreateVehicle(vehicle.id, spawn.coords, spawn.heading)
 
         TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
