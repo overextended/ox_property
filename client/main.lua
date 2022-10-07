@@ -760,8 +760,7 @@ RegisterNetEvent('ox_property:vehicleList', function(data)
                 args = {
                     property = currentZone.property,
                     zoneId = currentZone.zoneId,
-                    plate = vehicle.plate,
-                    recover = true
+                    plate = vehicle.plate
                 }
             }
         end
