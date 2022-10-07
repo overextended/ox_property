@@ -82,13 +82,12 @@ local zoneMenus = {
     end,
     wardrobe = function(currentZone)
         local options = {}
-        local zone = GlobalState['Properties'][currentZone.property].zones[currentZone.zoneId]
         local personalOutfits, zoneOutfits = lib.callback.await('ox_property:getOutfits', 100, {
             property = currentZone.property,
             zoneId = currentZone.zoneId
         })
 
-        if zone.outfits then
+        if currentZone.outfits then
             options[#options + 1] = {
                 title = 'Zone wardrobe',
                 event = 'ox_property:outfits',
