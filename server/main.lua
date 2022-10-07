@@ -84,6 +84,7 @@ end)
 local function isPermitted(player, zone)
     if not next(zone.permitted) then return true end
 
+    player = Ox.GetPlayer(player.source)
     if zone.permitted.groups and player.hasGroup(zone.permitted.groups) then return true end
 
     if zone.permitted.owner == player.charid then return true end
