@@ -2,8 +2,86 @@ local table = lib.table
 local properties = {}
 local components = {}
 local currentZone = {}
-local zoneContexts = {zone_menu = true}
+local zoneContexts = {zone_menu = true, vehicle_list = true}
 local zoneLists = {zone_menu = true, edit_permissions = true}
+
+local function getZoneEntities()
+    local entities = {}
+    local peds = GetGamePool('CPed')
+    for i = 1, #peds do
+        local ped = peds[i]
+        local pedCoords = GetEntityCoords(ped)
+        if currentZone:contains(pedCoords) then
+            entities[#entities + 1] = pedCoords
+        end
+    end
+
+    local vehicles = GetGamePool('CVehicle')
+    for i = 1, #vehicles do
+        local vehicle = vehicles[i]
+        local vehicleCoords = GetEntityCoords(vehicle)
+        if currentZone:contains(vehicleCoords) then
+            entities[#entities + 1] = vehicleCoords
+        end
+    end
+
+    return entities
+end
+exports('getZoneEntities', getZoneEntities)
+
+local function vehicleList(data)
+    local options = {}
+
+    for i = 1, #data.vehicles do
+        local vehicle = data.vehicles[i]
+        vehicle.data = data.vehicleData[vehicle.model]
+
+        local zoneName = vehicle.stored and vehicle.stored:gsub('^%l', string.upper) or 'Unknown'
+        local stored = vehicle.stored and vehicle.stored:find(':')
+
+        if stored and vehicle.stored == ('%s:%s'):format(currentZone.property, currentZone.zoneId) then
+            zoneName = 'Current Zone'
+        end
+
+        local action = zoneName == 'Current Zone' and 'Retrieve' or stored and 'Move' or 'Recover'
+
+        options[('%s - %s'):format(vehicle.data.name, vehicle.plate)] = {
+            metadata = {
+                ['Action'] = action,
+                ['Location'] = zoneName
+            },
+            onSelect = function(args)
+                if args.action == 'Retrieve' then
+                    TriggerServerEvent('ox_property:retrieveVehicle', {
+                        property = currentZone.property,
+                        zoneId = currentZone.zoneId,
+                        plate = args.plate,
+                        entities = getZoneEntities()
+                    })
+                else
+                    TriggerServerEvent('ox_property:moveVehicle', {
+                        property = currentZone.property,
+                        zoneId = currentZone.zoneId,
+                        plate = args.plate
+                    })
+                end
+            end,
+            args = {
+                plate = vehicle.plate,
+                action = action
+            }
+        }
+    end
+
+    lib.registerContext({
+        id = 'vehicle_list',
+        title = data.zoneOnly and ('%s - %s - Vehicles'):format(currentZone.property, currentZone.name) or 'All Vehicles',
+        menu = 'zone_menu',
+        options = options
+    })
+
+    lib.showContext('vehicle_list')
+end
 
 local zoneMenus = {
     management = function(currentZone)
@@ -323,23 +401,27 @@ local zoneMenus = {
         if cache.seat == -1 then
             options[#options + 1] = {
                 title = 'Store Vehicle',
-                event = 'ox_property:storeVehicle',
-                args = {
-                    property = currentZone.property,
-                    zoneId = currentZone.zoneId
-                }
+                onSelect = function()
+                    if cache.seat == -1 then
+                        TriggerServerEvent('ox_property:storeVehicle', {
+                            property = currentZone.property,
+                            zoneId = currentZone.zoneId,
+                            properties = lib.getVehicleProperties(cache.vehicle)
+                        })
+                    else
+                        lib.notify({title = "You are not in the driver's seat", type = 'error'})
+                    end
+                end
             }
         end
 
-        if zoneVehicles[1] then
+        if zoneVehicles and next(zoneVehicles) then
             options[#options + 1] = {
                 title = 'Open Location',
                 description = 'View your vehicles at this location',
                 metadata = {['Vehicles'] = #zoneVehicles},
-                event = 'ox_property:vehicleList',
+                onSelect = vehicleList,
                 args = {
-                    property = currentZone.property,
-                    zoneId = currentZone.zoneId,
                     vehicles = zoneVehicles,
                     vehicleData = vehicleData,
                     zoneOnly = true
@@ -353,10 +435,8 @@ local zoneMenus = {
             metadata = {['Vehicles'] = #allVehicles}
         }
         if #allVehicles > 0 then
-            options[#options].event = 'ox_property:vehicleList'
+            options[#options].onSelect = vehicleList
             options[#options].args = {
-                property = currentZone.property,
-                zoneId = currentZone.zoneId,
                 vehicles = allVehicles,
                 vehicleData = vehicleData
             }
@@ -673,131 +753,6 @@ local function checkCurrentZone(data)
     return false
 end
 exports('checkCurrentZone', checkCurrentZone)
-
-RegisterNetEvent('ox_property:storeVehicle', function(data)
-    if not checkCurrentZone(data) then return end
-
-    if cache.vehicle then
-        if cache.seat == -1 then
-            data.properties = lib.getVehicleProperties(cache.vehicle)
-            TriggerServerEvent('ox_property:storeVehicle', data)
-        else
-            lib.notify({title = "You are not in the driver's seat", type = 'error'})
-        end
-    else
-        lib.notify({title = 'You are not in a vehicle', type = 'error'})
-    end
-end)
-
-local function getZoneEntities()
-    local entities = {}
-    local peds = GetGamePool('CPed')
-    for i = 1, #peds do
-        local ped = peds[i]
-        local pedCoords = GetEntityCoords(ped)
-        if currentZone:contains(pedCoords) then
-            entities[#entities + 1] = pedCoords
-        end
-    end
-
-    local vehicles = GetGamePool('CVehicle')
-    for i = 1, #vehicles do
-        local vehicle = vehicles[i]
-        local vehicleCoords = GetEntityCoords(vehicle)
-        if currentZone:contains(vehicleCoords) then
-            entities[#entities + 1] = vehicleCoords
-        end
-    end
-
-    return entities
-end
-exports('getZoneEntities', getZoneEntities)
-
-RegisterNetEvent('ox_property:retrieveVehicle', function(data)
-    if not checkCurrentZone(data) then return end
-
-    data.entities = getZoneEntities()
-    TriggerServerEvent('ox_property:retrieveVehicle', data)
-end)
-
-RegisterNetEvent('ox_property:vehicleList', function(data)
-    if not checkCurrentZone(data) then return end
-
-    local options = {}
-    local subMenus = {}
-
-    for i = 1, #data.vehicles do
-        local vehicle = data.vehicles[i]
-        vehicle.data = data.vehicleData[vehicle.model]
-
-        local zoneName = not vehicle.stored and 'Unknown' or vehicle.stored:gsub('^%l', string.upper)
-        if vehicle.stored and vehicle.stored:find(':') then
-            local property, zoneId = string.strsplit(':', vehicle.stored)
-            zoneId = tonumber(zoneId)
-            if currentZone.property == property and currentZone.zoneId == zoneId then
-                zoneName = 'Current Zone'
-            elseif properties[property]?.zones?[zoneId] then
-                zoneName = ('%s - %s'):format(property, properties[property].zones[zoneId].name)
-            else
-                zoneName = 'Unknown'
-            end
-        end
-
-        options[('%s - %s'):format(vehicle.data.name, vehicle.plate)] = {
-            menu = vehicle.plate,
-            metadata = {['Location'] = zoneName}
-        }
-
-        local subOptions = {}
-        if vehicle.stored == ('%s:%s'):format(data.property, data.zoneId) then
-            subOptions['Retrieve'] = {
-                event = 'ox_property:retrieveVehicle',
-                args = {
-                    property = currentZone.property,
-                    zoneId = currentZone.zoneId,
-                    plate = vehicle.plate
-                }
-            }
-        elseif zoneName ~= 'Unknown' and vehicle.stored:find(':') then
-            subOptions['Move'] = {
-                serverEvent = 'ox_property:moveVehicle',
-                args = {
-                    property = currentZone.property,
-                    zoneId = currentZone.zoneId,
-                    plate = vehicle.plate
-                }
-            }
-        else
-            subOptions['Recover'] = {
-                serverEvent = 'ox_property:moveVehicle',
-                args = {
-                    property = currentZone.property,
-                    zoneId = currentZone.zoneId,
-                    plate = vehicle.plate
-                }
-            }
-        end
-        subMenus[#subMenus + 1] = {
-            id = vehicle.plate,
-            title = vehicle.plate,
-            menu = 'vehicle_list',
-            options = subOptions
-        }
-    end
-
-    local menu = {
-        id = 'vehicle_list',
-        title = data.zoneOnly and ('%s - %s - Vehicles'):format(currentZone.property, currentZone.name) or 'All Vehicles',
-        menu = 'zone_menu',
-        options = options
-    }
-    for i = 1, #subMenus do
-        menu[i] = subMenus[i]
-    end
-
-    lib.registerContext(menu)
-    lib.showContext('vehicle_list')
-end)
 
 RegisterNetEvent('ox_property:outfits', function(data)
     if not checkCurrentZone(data) then return end
