@@ -6,7 +6,7 @@ game         'gta5'
 
 --[[ Resource Information ]]--
 name         'ox_property'
-version      '0.7.0'
+version      '0.7.1'
 description  'Property'
 license      'GPL-3.0-or-later'
 author       'overextended'
