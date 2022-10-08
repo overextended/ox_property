@@ -1,4 +1,4 @@
-local defaultPermissions = {}
+local defaultOwner = 'bank'
 local properties = {}
 
 local function loadResourceDataFiles(property)
@@ -33,24 +33,36 @@ local function loadResourceDataFiles(property)
     for i = 1, #sets do
         local propertySet = sets[i]
         for k, v in pairs(propertySet) do
-            local savedData = MySQL.query.await('SELECT * FROM ox_property WHERE property = ?', {k})
-            if next(savedData) then
-                for j = 1, #savedData do
-                    local component = savedData[j]
-                    v[component.type == 'stash' and 'stashes' or 'zones'][component.id].permitted = json.decode(component.permitted)
+            local components = MySQL.query.await('SELECT type, id, owner, groups, public FROM ox_property WHERE property = ?', {k})
+            if components and next(components) then
+                for j = 1, #components do
+                    local savedComponent = components[j]
+                    local component = v[savedComponent.type == 'stash' and 'stashes' or 'zones'][savedComponent.id]
+
+                    component.owner = savedComponent.owner
+                    component.groups = json.decode(savedComponent.groups)
+                    component.public = savedComponent.public
                 end
             else
                 if v.stashes then
                     for j = 1, #v.stashes do
-                        v.stashes[j].permitted = v.stashes[j].permitted or defaultPermissions
-                        propertyInsert[#propertyInsert + 1] = {k, 'stash', j, json.encode(v.stashes[j].permitted)}
+                        local stash = v.stashes[j]
+                        stash.owner = stash.owner or defaultOwner
+                        stash.groups = stash.groups or {}
+                        stash.public = stash.public or false
+
+                        propertyInsert[#propertyInsert + 1] = {k, 'stash', j, stash.owner, json.encode(stash.groups), stash.public}
                     end
                 end
 
                 if v.zones then
                     for j = 1, #v.zones do
-                        v.zones[j].permitted = v.zones[j].permitted or defaultPermissions
-                        propertyInsert[#propertyInsert + 1] = {k, 'zone', j, json.encode(v.zones[j].permitted)}
+                        local zone = v.zones[j]
+                        zone.owner = zone.owner or defaultOwner
+                        zone.groups = zone.groups or {}
+                        zone.public = zone.public or false
+
+                        propertyInsert[#propertyInsert + 1] = {k, 'zone', j, zone.owner, json.encode(zone.groups), zone.public}
                     end
                 end
             end
@@ -59,9 +71,9 @@ local function loadResourceDataFiles(property)
                 for j = 1, #v.stashes do
                     local stash = v.stashes[j]
                     stash.stashId = j
-                    local owner = stash.permitted.owner == 'true' or tostring(not (stash.permitted.groups and next(stash.permitted.groups)) and tonumber(stash.permitted.owner))
+                    local owner = stash.owner == 'true' or (not next(stash.groups) and tostring(tonumber(stash.owner)))
 
-                    exports.ox_inventory:RegisterStash(('%s:%s'):format(k, j), ('%s - %s'):format(k, stash.name), stash.slots or 50, stash.maxWeight or 50000, owner, stash.permitted.groups, stash.coords)
+                    exports.ox_inventory:RegisterStash(('%s:%s'):format(k, j), ('%s - %s'):format(k, stash.name), stash.slots or 50, stash.maxWeight or 50000, owner, not stash.public and stash.groups, stash.coords)
                 end
             end
 
@@ -71,7 +83,7 @@ local function loadResourceDataFiles(property)
     GlobalState['Properties'] = properties
 
     if next(propertyInsert) then
-        MySQL.prepare('INSERT INTO ox_property (property, type, id, permitted) VALUES (?, ?, ?, ?)', propertyInsert)
+        MySQL.prepare('INSERT INTO ox_property (property, type, id, owner, groups, public) VALUES (?, ?, ?, ?, ?, ?)', propertyInsert)
     end
 end
 exports('loadDataFiles', loadResourceDataFiles)
@@ -81,16 +93,16 @@ AddEventHandler('onResourceStart', function(resource)
     loadResourceDataFiles()
 end)
 
-local function isPermitted(player, zone)
-    if not next(zone.permitted) then return true end
-
+local function isPermitted(player, zone, failOnPublic)
     player = Ox.GetPlayer(player.source)
-    if zone.permitted.groups and player.hasGroup(zone.permitted.groups) then return true end
+    if player.hasGroup(zone.groups) then return true end
 
-    if zone.permitted.owner == player.charid then return true end
+    if zone.owner == player.charid then return true end
 
-    local groupOwner = GlobalState[('group.%s'):format(zone.permitted.owner)]
+    local groupOwner = GlobalState[('group.%s'):format(zone.owner)]
     if groupOwner and player.hasGroup({[groupOwner.name] = #groupOwner.grades}) then return true end
+
+    if zone.public and not failOnPublic then return 'public' end
 
     TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
     return false
@@ -101,7 +113,7 @@ lib.callback.register('ox_property:getDisplayData', function(source, data)
     local player = Ox.GetPlayer(source)
     local zone = properties[data.property].zones[data.zoneId]
 
-    if not isPermitted(player, zone) then return end
+    if not isPermitted(player, zone, true) then return end
 
     local displayData = {
         groups = MySQL.query.await('SELECT name, label, grades FROM ox_groups'),
@@ -116,7 +128,8 @@ lib.callback.register('ox_property:getDisplayData', function(source, data)
     for i = 1, #displayData.groups do
         local group = displayData.groups[i]
         group.grades = json.decode(group.grades)
-        if zone.permitted.owner == group.name then
+
+        if zone.owner == group.name then
             displayData.owner = group.label
         end
     end
@@ -127,20 +140,21 @@ lib.callback.register('ox_property:getDisplayData', function(source, data)
             name = nearbyPlayer.name,
             charid = nearbyPlayer.charid
         }
-        if not zone.permitted.owner and tonumber(zone.permitted.owner) == nearbyPlayer.charid then
+
+        if not zone.owner and tonumber(zone.owner) == nearbyPlayer.charid then
             displayData.owner = nearbyPlayer.name
         end
     end
 
     if not displayData.owner then
-        if not zone.permitted.owner then
+        if not zone.owner then
             displayData.owner = 'None'
-        elseif tonumber(zone.permitted.owner) then
-            if tonumber(zone.permitted.owner) == player.charid then
+        elseif tonumber(zone.owner) then
+            if tonumber(zone.owner) == player.charid then
                 displayData.owner = player.name
             else
-                local names = MySQL.single.await('SELECT firstname, lastname FROM characters WHERE charid = ?', {zone.permitted.owner})
-                displayData.owner = ('%s %s'):format(names.firstname, names.lastname)
+                local names = MySQL.single.await('SELECT firstname, lastname FROM characters WHERE charid = ?', {zone.owner})
+                displayData.owner = names and ('%s %s'):format(names.firstname, names.lastname)
             end
         end
     end
@@ -153,7 +167,7 @@ RegisterServerEvent('ox_property:updatePermitted', function(data)
     local property = properties[data.property]
     local zone = property.zones[data.zoneId]
 
-    if not isPermitted(player, zone) then return end
+    if not isPermitted(player, zone, true) then return end
     if not next(data.change) then return end
 
     if data.componentType and data.componentId then
@@ -161,35 +175,39 @@ RegisterServerEvent('ox_property:updatePermitted', function(data)
 
         if data.change.groups then
             for k, v in pairs(data.change.groups) do
-                component.permitted.groups = component.permitted.groups or {}
-                component.permitted.groups[k] = tonumber(v) ~= 0 and tonumber(v) or nil
+                component.groups[k] = tonumber(v) ~= 0 and tonumber(v) or nil
             end
+
+            MySQL.update('UPDATE ox_property SET groups = ? WHERE property = ? AND type = ? AND id = ?', {json.encode(component.groups), data.property, data.componentType, data.componentId})
         end
 
-        MySQL.update('UPDATE ox_property SET permitted = ? WHERE property = ? AND type = ? AND id = ?', {json.encode(component.permitted.owner), data.property, data.componentType, data.componentId})
-    else
-        local permitted = zone.permitted
+        if data.change.public ~= nil then
+            component.public = data.change.public
 
+            MySQL.update('UPDATE ox_property SET public = ? WHERE property = ? AND type = ? AND id = ?', {component.public, data.property, data.componentType, data.componentId})
+        end
+    else
         if data.change.owner then
-            permitted.owner = tonumber(data.change.owner) or data.change.owner
+            zone.owner = data.change.owner
         end
 
         if data.change.groups then
             for k, v in pairs(data.change.groups) do
-                permitted.groups = permitted.groups or {}
-                permitted.groups[k] = tonumber(v) ~= 0 and tonumber(v) or nil
+                zone.groups[k] = tonumber(v) ~= 0 and tonumber(v) or nil
             end
         end
 
         for i = 1, #property.stashes do
-            property.stashes[i].permitted = permitted
+            property.stashes[i].owner = zone.owner
+            property.stashes[i].groups = zone.groups
         end
 
         for i = 1, #property.zones do
-            property.zones[i].permitted = permitted
+            property.zones[i].owner = zone.owner
+            property.zones[i].groups = zone.groups
         end
 
-        MySQL.update('UPDATE ox_property SET permitted = ? WHERE property = ?', {json.encode(permitted), data.property})
+        MySQL.update('UPDATE ox_property SET owner = ?, groups = ? WHERE property = ?', {zone.owner, json.encode(zone.groups), data.property})
     end
 
     property.refresh = true
@@ -204,19 +222,21 @@ RegisterServerEvent('ox_property:resetPermitted', function(data)
     local property = properties[data.property]
     local zone = property.zones[data.zoneId]
 
-    if not isPermitted(player, zone) then return end
-
-    local owner = zone.permitted.owner
+    if not isPermitted(player, zone, true) then return end
 
     for i = 1, #property.stashes do
-        property.stashes[i].permitted = {owner = owner}
+        property.stashes[i].owner = zone.owner
+        property.stashes[i].groups = {}
+        property.stashes[i].public = false
     end
 
     for i = 1, #property.zones do
-        property.zones[i].permitted = {owner = owner}
+        property.zones[i].owner = zone.owner
+        property.zones[i].groups = {}
+        property.zones[i].public = false
     end
 
-    MySQL.update('UPDATE ox_property SET permitted = ? WHERE property = ?', {json.encode({owner = owner}), data.property})
+    MySQL.update('UPDATE ox_property SET owner = ?, groups = {}, public = false WHERE property = ?', {zone.owner, data.property})
 
     property.refresh = true
     properties[data.property] = property
@@ -229,7 +249,7 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
     local player = Ox.GetPlayer(source)
     local zone = properties[data.property].zones[data.zoneId]
 
-    if not isPermitted(player, zone) then return end
+    if not isPermitted(player, zone, false) then return end
 
     local vehicles = data.propertyOnly and MySQL.query.await('SELECT * FROM vehicles WHERE stored LIKE ? AND owner = ?', {('%s%%'):format(data.property), player.charid}) or MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid})
 
@@ -282,7 +302,7 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
     local player = Ox.GetPlayer(source)
     local zone = properties[data.property].zones[data.zoneId]
 
-    if not isPermitted(player, zone) then return end
+    if not isPermitted(player, zone, false) then return end
 
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(GetPlayerPed(player.source), false))
     if not vehicle then
@@ -340,7 +360,7 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
     local player = Ox.GetPlayer(source)
     local zone = properties[data.property].zones[data.zoneId]
 
-    if not isPermitted(player, zone) then return end
+    if not isPermitted(player, zone, false) then return end
 
     local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 
@@ -365,7 +385,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
     local player = Ox.GetPlayer(source)
     local zone = properties[data.property].zones[data.zoneId]
 
-    if not isPermitted(player, zone) then return end
+    if not isPermitted(player, zone, false) then return end
 
     local vehicles = Ox.GetVehicles(true)
     local vehicle, recover, db
@@ -399,17 +419,16 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
         end
     end
 
-
     local balance = exports.pefcl:getDefaultAccountBalance(player.source).data
     local amount = recover and 1000 or 500
 
-    local owner = GlobalState[('group.%s'):format(zone.permitted.owner)]
+    local owner = GlobalState[('group.%s'):format(zone.owner)]
     local from
     if owner then
         from = owner.label
     else
-        owner = MySQL.single.await('SELECT firstname, lastname FROM characters WHERE charid = ?', {zone.permitted.owner})
-        from = ('%s %s'):format(owner.firstname, owner.lastname)
+        owner = MySQL.single.await('SELECT firstname, lastname FROM characters WHERE charid = ?', {zone.owner})
+        from = owner and ('%s %s'):format(owner.firstname, owner.lastname)
     end
 
     local vehicleData = Ox.GetVehicleData(vehicle.model)
@@ -421,12 +440,12 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
         return
     end
 
-    if zone.permitted.owner ~= player.charid then
+    if zone.owner ~= player.charid then
         if balance >= amount then
             exports.pefcl:removeBankBalance(player.source, {amount = amount, message = message})
 
             exports.pefcl:addBankBalanceByIdentifier(player.source, {
-                identifier = zone.permitted.owner,
+                identifier = zone.owner,
                 amount = amount,
                 message = message
             })
@@ -435,7 +454,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
                 to = player.name,
                 toIdentifier = player.charid,
                 from = from,
-                fromIdentifier = zone.permitted.owner,
+                fromIdentifier = zone.owner,
                 amount = amount,
                 message = message
             })
@@ -461,7 +480,7 @@ lib.callback.register('ox_property:getOutfits', function(source, data)
     local player = Ox.GetPlayer(source)
     local zone = properties[data.property].zones[data.zoneId]
 
-    if not isPermitted(player, zone) then return end
+    if not isPermitted(player, zone, false) then return end
 
     return ox_appearance:outfitNames(player.charid) or {}, ox_appearance:outfitNames(('%s:%s'):format(data.property, data.zoneId)) or {}
 end)
@@ -470,7 +489,7 @@ RegisterNetEvent('ox_property:saveOutfit', function(data, appearance)
     local player = Ox.GetPlayer(source)
     local zone = properties[data.property].zones[data.zoneId]
 
-    if not isPermitted(player, zone) then return end
+    if not isPermitted(player, zone, false) then return end
 
     ox_appearance:saveOutfit(('%s:%s'):format(data.property, data.zoneId), appearance, data.slot, data.outfitNames)
 end)
@@ -479,7 +498,7 @@ RegisterNetEvent('ox_property:applyOutfit', function(data)
     local player = Ox.GetPlayer(source)
     local zone = properties[data.property].zones[data.zoneId]
 
-    if not isPermitted(player, zone) then return end
+    if not isPermitted(player, zone, false) then return end
 
     TriggerClientEvent('ox_property:applyOutfit', source, ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.zoneId), data.slot) or {})
 end)

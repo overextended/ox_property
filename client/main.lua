@@ -56,7 +56,8 @@ local zoneMenus = {
                     local matching = true
                     if #propertyComponents > 1 then
                         for i = 1, #propertyComponents do
-                            if not table.matches(currentZone.permitted, propertyComponents[i].permitted) then
+                            local component = propertyComponents[i]
+                            if currentZone.owner ~= component.owner or not table.matches(currentZone.groups, component.groups) or currentZone.public ~= component.public then
                                 matching = false
                                 break
                             end
@@ -88,8 +89,8 @@ local zoneMenus = {
                             }
                         }
 
-                        if currentZone.permitted.groups then
-                            for k, v in pairs(currentZone.permitted.groups) do
+                        if currentZone.groups then
+                            for k, v in pairs(currentZone.groups) do
                                 local group
                                 for i = 1, #displayData.groups do
                                     group = displayData.groups[i]
@@ -125,8 +126,8 @@ local zoneMenus = {
                         }
                     }
 
-                    if component.permitted.groups then
-                        for k, v in pairs(component.permitted.groups) do
+                    if component.groups then
+                        for k, v in pairs(component.groups) do
                             local group
                             for i = 1, #displayData.groups do
                                 group = displayData.groups[i]
@@ -220,7 +221,7 @@ local zoneMenus = {
 
                         for i = 1, #displayData.groups do
                             local option = displayData.groups[i]
-                            if not (component.permitted.groups and component.permitted.groups[option.name]) then
+                            if component.groups[option.name] then
                                 select[#select + 1] = {
                                     value = i,
                                     label = option.label
@@ -521,7 +522,9 @@ local function loadProperties(value)
                             zoneId = i,
                             name = zone.name,
                             type = zone.type,
-                            permitted = zone.permitted,
+                            owner = zone.owner,
+                            groups = zone.groups,
+                            public = zone.public,
                         })
                     elseif zone.box then
                         zoneData = lib.zones.box({
@@ -536,7 +539,9 @@ local function loadProperties(value)
                             zoneId = i,
                             name = zone.name,
                             type = zone.type,
-                            permitted = zone.permitted,
+                            owner = zone.owner,
+                            groups = zone.groups,
+                            public = zone.public,
                         })
                     elseif zone.sphere then
                         zoneData = lib.zones.sphere({
@@ -550,7 +555,9 @@ local function loadProperties(value)
                             zoneId = i,
                             name = zone.name,
                             type = zone.type,
-                            permitted = zone.permitted,
+                            owner = zone.owner,
+                            groups = zone.groups,
+                            public = zone.public,
                         })
                     end
                     components[k][#components[k] + 1] = zoneData
@@ -582,15 +589,15 @@ AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, r
     loadProperties(value)
 end)
 
-local function isPermitted()
-    if not next(currentZone.permitted) then return true end
+local function isPermitted(failOnPublic)
+    if player.hasGroup(currentZone.groups) then return true end
 
-    if currentZone.permitted.groups and player.hasGroup(currentZone.permitted.groups) then return true end
+    if currentZone.owner == player.charid then return true end
 
-    if currentZone.permitted.owner == player.charid then return true end
+    local groupOwner = GlobalState[('group.%s'):format(currentZone.owner)]
+    if groupOwner and #groupOwner.grades == player.groups[currentZone.owner] then return true end
 
-    local groupOwner = GlobalState[('group.%s'):format(currentZone.permitted.owner)]
-    if groupOwner and #groupOwner.grades == player.groups[currentZone.permitted.owner] then return true end
+    if currentZone.public and not failOnPublic then return 'public' end
 
     lib.notify({title = 'Permission Denied', type = 'error'})
     return false
@@ -609,12 +616,14 @@ RegisterCommand('openZone', function()
     end
 
     if next(currentZone) then
-        if not isPermitted() then return end
+        if not isPermitted(false) then return end
 
         local data, menuType = zoneMenus[currentZone.type]({
             property = currentZone.property,
             zoneId = currentZone.zoneId,
-            permitted = currentZone.permitted
+            owner = currentZone.owner,
+            groups = currentZone.groups,
+            public = currentZone.public
         })
 
         if data.event then
