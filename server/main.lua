@@ -446,7 +446,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
         vehicle.data = json.decode(vehicle.data)
         vehicle.data.display = nil
 
-        MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), json.encode(vehicle.data), vehicle.plate})
+        MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), json.encode(vehicle.data), data.plate})
     else
         vehicle.set('display')
         vehicle.setStored(('%s:%s'):format(data.property, data.zoneId), true)
