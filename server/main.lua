@@ -371,32 +371,30 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
     local vehicle, recover, db
 
     for i = 1, #vehicles do
-        local veh = vehicles[i]
-        if veh.plate == data.plate then
-            local seats = Ox.GetVehicleData(veh.model).seats
+        if vehicles[i].plate == data.plate then
+            local seats = Ox.GetVehicleData(vehicles[i].model).seats
             for j = -1, seats - 1 do
-                if GetPedInVehicleSeat(veh.entity, j) ~= 0 then
+                if GetPedInVehicleSeat(vehicles[i].entity, j) ~= 0 then
                     TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to recover', type = 'error'})
                     return
                 end
             end
 
-            vehicle = veh
+            vehicle = vehicles[i]
             recover = true
             break
         end
+    end
+
+    if not vehicle then
+        vehicle = MySQL.single.await('SELECT plate, model, data, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 
         if not vehicle then
-            vehicle = MySQL.single.await('SELECT model, data, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
-
-            if not vehicle then
-                TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle not found', type = 'error'})
-                return
-            end
-
-            recover = not vehicle.stored:find(':')
-            db = true
+            TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle not found', type = 'error'})
+            return
         end
+        recover = vehicle.stored and not vehicle.stored:find(':')
+        db = true
     end
 
 
@@ -408,7 +406,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
     if owner then
         from = owner.label
     else
-        owner = MySQL.single.await('SELECT firstname, lastname FROM characters WHERE charid = ?', {zone.permitted.owner})
+        owner = MySQL.single.await('SELECT firstname, lastname FROM characters WHERE charid = ?', {zone.permitted.owner or player.charid})
         from = ('%s %s'):format(owner.firstname, owner.lastname)
     end
 
@@ -429,7 +427,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
                 to = player.name,
                 toIdentifier = player.charid,
                 from = from,
-                fromIdentifier = zone.permitted.owner,
+                fromIdentifier = zone.permitted.owner or player.charid,
                 amount = amount,
                 message = message
             })
