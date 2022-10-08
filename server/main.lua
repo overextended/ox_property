@@ -414,7 +414,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
                 return
             end
 
-            recover = not vehicle.stored:find(':')
+            recover = not vehicle.stored or not vehicle.stored:find(':')
             db = true
         end
     end
