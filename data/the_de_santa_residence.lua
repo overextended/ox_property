@@ -2,21 +2,22 @@ return {
     label = 'The De Santa Residence',
     sprite = 40,
     blip = vec(-803.4, 175.9),
-    stashes = {
+    components = {
         {
             name = 'Garage Stash',
-            coords = vec(-809.4, 190.8, 72.5),
+			type = 'stash',
+            point = vec(-809.4, 190.8, 72.5),
         },
         {
             name = 'Kitchen Stash',
-            coords = vec(-803.1, 184.7, 72.6),
+			type = 'stash',
+            point = vec(-803.1, 184.7, 72.6),
         },
         {
             name = 'Living Stash',
-            coords = vec(-804.9, 177.4, 72.8),
+			type = 'stash',
+            point = vec(-804.9, 177.4, 72.8),
         },
-    },
-    zones = {
         {
             name = 'Management',
             type = 'management',

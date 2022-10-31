@@ -2,21 +2,22 @@ return {
     label = '3671 Whispymound Drive',
     sprite = 40,
     blip = vec(-4.7, 523.5),
-    stashes = {
+    components = {
         {
             name = 'Garage Stash',
-            coords = vec(25.3, 544.6, 176.0),
+			type = 'stash',
+            point = vec(25.3, 544.6, 176.0),
         },
         {
             name = 'Dining Stash',
-            coords = vec(-7.0, 530.2, 175.0),
+			type = 'stash',
+            point = vec(-7.0, 530.2, 175.0),
         },
         {
             name = 'Bedroom Stash',
-            coords = vec(-1.5, 525.9, 170.6),
+			type = 'stash',
+            point = vec(-1.5, 525.9, 170.6),
         },
-    },
-    zones = {
         {
             name = 'Management',
             type = 'management',
