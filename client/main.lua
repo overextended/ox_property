@@ -557,25 +557,20 @@ local function loadProperties(value)
             AddTextComponentSubstringPlayerName(k)
             EndTextCommandSetBlipName(blip)
 
-            if v.stashes then
-                for i = 1, #v.stashes do
-                    local stash = v.stashes[i]
+            for i = 1, #v.components do
+                local component = v.components[i]
+                if component.type == 'stash' then
                     local pointName = ('%s:%s'):format(k, i)
-                    components[k][#components[k] + 1] = lib.points.new(stash.coords, 16, {
+                    components[k][#components[k] + 1] = lib.points.new(component.point, 16, {
                         type = 'stash',
                         name = pointName,
                         nearby = nearbyPoint,
                     })
-                end
-            end
-
-            if v.zones then
-                for i = 1, #v.zones do
-                    local zone = v.zones[i]
+                else
                     local onEnter = function(self)
                         currentZone = self
                         lib.notify({
-                            title = self.property,
+                            title = self.propertyLabel,
                             description = self.name,
                             duration = 5000,
                             position = 'top'
@@ -590,61 +585,64 @@ local function loadProperties(value)
                     end
 
                     local zoneData
-                    if zone.points then
+                    if component.points then
                         zoneData = lib.zones.poly({
-                            points = zone.points,
-                            thickness = zone.thickness,
+                            points = component.points,
+                            thickness = component.thickness,
 
                             onEnter = onEnter,
                             onExit = onExit,
 
                             property = k,
+                            propertyLabel = v.label,
                             zoneId = i,
-                            name = zone.name,
-                            type = zone.type,
-                            owner = zone.owner,
-                            groups = zone.groups,
-                            public = zone.public,
+                            name = component.name,
+                            type = component.type,
+                            owner = component.owner,
+                            groups = component.groups,
+                            public = component.public,
                         })
-                    elseif zone.box then
+                    elseif component.box then
                         zoneData = lib.zones.box({
-                            coords = zone.box,
-                            rotation = zone.rotation,
-                            size = zone.size or vec3(2),
+                            coords = component.box,
+                            rotation = component.rotation,
+                            size = component.size or vec3(2),
 
                             onEnter = onEnter,
                             onExit = onExit,
 
                             property = k,
+                            propertyLabel = v.label,
                             zoneId = i,
-                            name = zone.name,
-                            type = zone.type,
-                            owner = zone.owner,
-                            groups = zone.groups,
-                            public = zone.public,
+                            name = component.name,
+                            type = component.type,
+                            owner = component.owner,
+                            groups = component.groups,
+                            public = component.public,
                         })
-                    elseif zone.sphere then
+                    elseif component.sphere then
                         zoneData = lib.zones.sphere({
-                            coords = zone.sphere,
-                            radius = zone.radius,
+                            coords = component.sphere,
+                            radius = component.radius,
 
                             onEnter = onEnter,
                             onExit = onExit,
 
                             property = k,
+                            propertyLabel = v.label,
                             zoneId = i,
-                            name = zone.name,
-                            type = zone.type,
-                            owner = zone.owner,
-                            groups = zone.groups,
-                            public = zone.public,
+                            name = component.name,
+                            type = component.type,
+                            owner = component.owner,
+                            groups = component.groups,
+                            public = component.public,
                         })
                     end
                     components[k][#components[k] + 1] = zoneData
 
-                    if zone.disableGenerators then
+                    if component.disableGenerators then
                         local point1, point2
-                        if zone.sphere then
+                        if component.sphere then
                             point1, point2 = glm.sphere.maximalContainedAABB(zoneData.coords, zoneData.radius)
                         else
                             local verticalOffset = vec(0, 0, zoneData.thickness / 2)
@@ -670,12 +668,10 @@ AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, r
 end)
 
 local function isPermitted(failOnPublic)
+    local property = properties[currentZone.property]
     if player.hasGroup(currentZone.groups) then return true end
 
-    if currentZone.owner == player.charid then return true end
-
-    local groupOwner = GlobalState[('group.%s'):format(currentZone.owner)]
-    if groupOwner and #groupOwner.grades == player.groups[currentZone.owner] then return true end
+    if property.owner == player.charid then return true end
 
     if currentZone.public and not failOnPublic then return 'public' end
 
