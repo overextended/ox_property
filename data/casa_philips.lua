@@ -2,17 +2,17 @@ return {
     label = 'Casa Philips',
     sprite = 40,
     blip = vec(1973.6, 3818.2),
-    stashes = {
+    components = {
         {
             name = 'Parking Stash',
-            coords = vec(1964.6, 3819.0, 32.4),
+			type = 'stash',
+            point = vec(1964.6, 3819.0, 32.4),
         },
         {
             name = 'TV Stash',
-            coords = vec(1978.2, 3819.4, 33.5),
+			type = 'stash',
+            point = vec(1978.2, 3819.4, 33.5),
         },
-    },
-    zones = {
         {
             name = 'Management',
             type = 'management',

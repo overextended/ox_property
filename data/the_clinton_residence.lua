@@ -2,17 +2,17 @@ return {
     label = 'The Clinton Residence',
     sprite = 40,
     blip = vec(-14.9, -1433.2),
-    stashes = {
+    components = {
         {
             name = 'Garage Stash',
-            coords = vec(-25.8, -1424.7, 30.7),
+			type = 'stash',
+            point = vec(-25.8, -1424.7, 30.7),
         },
         {
             name = 'Storage Room',
-            coords = vec(-17.1, -1430.4, 31.1),
+			type = 'stash',
+            point = vec(-17.1, -1430.4, 31.1),
         },
-    },
-    zones = {
         {
             name = 'Management',
             type = 'management',

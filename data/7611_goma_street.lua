@@ -2,21 +2,22 @@ return {
     label = '7611 Goma Street',
     sprite = 40,
     blip = vec(-1148.3, -1523.0),
-    stashes = {
+    components = {
         {
             name = 'Parking Stash',
-            coords = vec(-1147.2, -1525.4, 4.3),
+			type = 'stash',
+            point = vec(-1147.2, -1525.4, 4.3),
         },
         {
             name = 'Stairs Stash',
-            coords = vec(-1144.7, -1518.0, 4.3),
+			type = 'stash',
+            point = vec(-1144.7, -1518.0, 4.3),
         },
         {
             name = 'Entrance Stash',
-            coords = vec(-1152.8, -1516.9, 10.6),
+			type = 'stash',
+            point = vec(-1152.8, -1516.9, 10.6),
         },
-    },
-    zones = {
         {
             name = 'Management',
             type = 'management',

@@ -2,7 +2,7 @@ return {
     label = 'Pillbox Hill Parking',
     sprite = 357,
     blip = vec(222.6, -790.8),
-    zones = {
+    components = {
         {
             name = 'Lower Parking',
             type = 'parking',
