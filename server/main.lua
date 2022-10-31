@@ -1,89 +1,63 @@
-local defaultOwner = 'bank'
+local defaultOwner = nil
 local properties = {}
 
-local function loadResourceDataFiles(property)
-    local sets = {}
-    if property then
-        sets[1] = {[property] = properties[property]}
-    else
-        local resource = GetInvokingResource() or cache.resource
-        local system = os.getenv('OS')
-        local command = system and system:match('Windows') and 'dir "%s/" /b' or 'ls "%s/"'
-        local path = GetResourcePath(resource)
-        local dir = io.popen(command:format(path:gsub('//', '/') .. '/data'))
+local function loadResourceDataFiles()
+    local resource = GetInvokingResource() or cache.resource
+    local system = os.getenv('OS')
+    local command = system and system:match('Windows') and 'dir "%s/" /b' or 'ls "%s/"'
+    local path = GetResourcePath(resource)
+    local dir = io.popen(command:format(path:gsub('//', '/') .. '/data'))
 
-        local files = {}
-        if dir then
-            for line in dir:lines() do
-                local file = line:gsub('%.lua', '')
-                files[#files + 1] = file
-            end
-            dir:close()
+    local lines = {}
+    if dir then
+        for line in dir:lines() do
+            lines[#lines + 1] = line:gsub('%.lua', '')
         end
+        dir:close()
+    end
 
-        for i = 1, #files do
-            local file = files[i]
-            local func, err = load(LoadResourceFile(resource, 'data/' .. file .. '.lua'), file, 't')
-            assert(func, err == nil or '\n^1' .. err .. '^7')
-            sets[i] = func()
-        end
+    local files = {}
+    for i = 1, #lines do
+        local file = lines[i]
+        local func, err = load(LoadResourceFile(resource, ('data/%s.lua'):format(file)), file, 't')
+        assert(func, err == nil or ('\n^1%s^7'):format(err))
+        files[file] = func()
+    end
+
+    local result = MySQL.query.await('SELECT * FROM ox_property')
+
+    local existingProperties = {}
+    for i = 1, #result do
+        local property = result[i]
+        existingProperties[property.name] = property
     end
 
     local propertyInsert = {}
-    for i = 1, #sets do
-        local propertySet = sets[i]
-        for k, v in pairs(propertySet) do
-            local components = MySQL.query.await('SELECT type, id, owner, groups, public FROM ox_property WHERE property = ?', {k})
-            if components and next(components) then
-                for j = 1, #components do
-                    local savedComponent = components[j]
-                    local component = v[savedComponent.type == 'stash' and 'stashes' or 'zones'][savedComponent.id]
+    for k, v in pairs(files) do
+        local existingProperty = existingProperties[k]
 
-                    component.owner = savedComponent.owner
-                    component.groups = json.decode(savedComponent.groups)
-                    component.public = savedComponent.public
-                end
-            else
-                if v.stashes then
-                    for j = 1, #v.stashes do
-                        local stash = v.stashes[j]
-                        stash.owner = stash.owner or defaultOwner
-                        stash.groups = stash.groups or {}
-                        stash.public = stash.public or false
-
-                        propertyInsert[#propertyInsert + 1] = {k, 'stash', j, stash.owner, json.encode(stash.groups), stash.public}
-                    end
-                end
-
-                if v.zones then
-                    for j = 1, #v.zones do
-                        local zone = v.zones[j]
-                        zone.owner = zone.owner or defaultOwner
-                        zone.groups = zone.groups or {}
-                        zone.public = zone.public or false
-
-                        propertyInsert[#propertyInsert + 1] = {k, 'zone', j, zone.owner, json.encode(zone.groups), zone.public}
-                    end
-                end
-            end
-
-            if v.stashes then
-                for j = 1, #v.stashes do
-                    local stash = v.stashes[j]
-                    stash.stashId = j
-                    local owner = stash.owner == 'true' or (not next(stash.groups) and tostring(tonumber(stash.owner)))
-
-                    exports.ox_inventory:RegisterStash(('%s:%s'):format(k, j), ('%s - %s'):format(k, stash.name), stash.slots or 50, stash.maxWeight or 50000, owner, not stash.public and stash.groups, stash.coords)
-                end
-            end
-
-            properties[k] = v
+        if existingProperty then
+            v.owner = existingProperty.owner
+            v.permissions = existingProperty.permissions
+        else
+            v.owner = defaultOwner
+            v.permissions = {}
+            propertyInsert[#propertyInsert + 1] = {k, defaultOwner}
         end
+
+        for i = 1, #v.components do
+            local component = v.components[i]
+            if component.type == 'stash' then
+                -- exports.ox_inventory:RegisterStash(('%s:%s'):format(k, i), ('%s - %s'):format(k, component.name), component.slots or 50, component.maxWeight or 50000, owner, not component.public and component.groups, component.coords)
+            end
+        end
+
+        properties[k] = v
     end
     GlobalState['Properties'] = properties
 
     if next(propertyInsert) then
-        MySQL.prepare('INSERT INTO ox_property (property, type, id, owner, groups, public) VALUES (?, ?, ?, ?, ?, ?)', propertyInsert)
+        MySQL.prepare('INSERT INTO ox_property (name, owner) VALUES (?, ?)', propertyInsert)
     end
 end
 exports('loadDataFiles', loadResourceDataFiles)
