@@ -553,8 +553,8 @@ local function loadProperties(value)
             SetBlipShrink(blip, true)
             SetBlipAsShortRange(blip, true)
 
-            BeginTextCommandSetBlipName('STRING')
-            AddTextComponentSubstringPlayerName(k)
+            AddTextEntry(k, v.label)
+            BeginTextCommandSetBlipName(k)
             EndTextCommandSetBlipName(blip)
 
             for i = 1, #v.components do
