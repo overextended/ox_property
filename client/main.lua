@@ -532,8 +532,11 @@ local function loadProperties(value)
     for k, v in pairs(value) do
         local create = true
         if (not properties[k] or v.refresh) and components[k] then
-            RemoveBlip(components[k][1])
-            for i = 2, #components[k] do
+            if components[k].blip then
+                RemoveBlip(components[k].blip)
+            end
+
+            for i = 1, #components[k] do
                 components[k][i]:remove()
             end
             v.refresh = nil
@@ -544,26 +547,29 @@ local function loadProperties(value)
         if create then
             properties[k] = v
             components[k] = {}
-            local blipCoords = v.blip
-            local blip = AddBlipForCoord(blipCoords.x, blipCoords.y, blipCoords.z)
-            components[k][#components[k] + 1] = blip
 
-            SetBlipSprite(blip, v.sprite)
-            SetBlipDisplay(blip, 2)
-            SetBlipShrink(blip, true)
-            SetBlipAsShortRange(blip, true)
+            if v.blip and v.sprite then
+                local x, y, z in v.blip
+                local blip = AddBlipForCoord(x, y, z)
+                components[k].blip = blip
 
-            AddTextEntry(k, v.label)
-            BeginTextCommandSetBlipName(k)
-            EndTextCommandSetBlipName(blip)
+                SetBlipSprite(blip, v.sprite)
+                SetBlipDisplay(blip, 2)
+                SetBlipShrink(blip, true)
+                SetBlipAsShortRange(blip, true)
+
+                AddTextEntry(k, v.label)
+                BeginTextCommandSetBlipName(k)
+                EndTextCommandSetBlipName(blip)
+            end
 
             for i = 1, #v.components do
                 local component = v.components[i]
-                if component.type == 'stash' then
-                    local pointName = ('%s:%s'):format(k, i)
-                    components[k][#components[k] + 1] = lib.points.new(component.point, 16, {
+
+                if component.point then
+                    components[k][i] = lib.points.new(component.point, 16, {
                         type = 'stash',
-                        name = pointName,
+                        name = ('%s:%s'):format(k, i),
                         nearby = nearbyPoint,
                     })
                 else
@@ -576,9 +582,10 @@ local function loadProperties(value)
                             position = 'top'
                         })
                     end
+
                     local onExit = function(self)
                         if currentZone.property == self.property and currentZone.zoneId == self.zoneId then
-                            currentZone = {}
+                            table.wipe(currentZone)
                             if zoneContexts[lib.getOpenContextMenu()] then lib.hideContext() end
                             if zoneLists[lib.getOpenMenu()] then lib.hideMenu() end
                         end
@@ -638,7 +645,7 @@ local function loadProperties(value)
                             public = component.public,
                         })
                     end
-                    components[k][#components[k] + 1] = zoneData
+                    components[k][i] = zoneData
 
                     if component.disableGenerators then
                         local point1, point2
