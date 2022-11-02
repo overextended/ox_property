@@ -67,16 +67,13 @@ AddEventHandler('onResourceStart', function(resource)
     loadResourceDataFiles()
 end)
 
-local function isPermitted(player, zone, failOnPublic)
+local function isPermitted(player, zone)
+    do return true end
+    local property = properties[zone.property]
     player = Ox.GetPlayer(player.source)
     if player.hasGroup(zone.groups) then return true end
 
-    if zone.owner == player.charid then return true end
-
-    local groupOwner = GlobalState[('group.%s'):format(zone.owner)]
-    if groupOwner and player.hasGroup({[groupOwner.name] = #groupOwner.grades}) then return true end
-
-    if zone.public and not failOnPublic then return 'public' end
+    if property.owner == player.charid then return true end
 
     TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
     return false
@@ -85,7 +82,7 @@ exports('isPermitted', isPermitted)
 
 lib.callback.register('ox_property:getDisplayData', function(source, data)
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].zones[data.zoneId]
+    local zone = properties[data.property].components[data.zoneId]
 
     if not isPermitted(player, zone, true) then return end
 
@@ -221,7 +218,7 @@ end)
 
 lib.callback.register('ox_property:getVehicleList', function(source, data)
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].zones[data.zoneId]
+    local zone = properties[data.property].components[data.zoneId]
 
     if not isPermitted(player, zone, false) then return end
 
@@ -274,7 +271,7 @@ exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
 
 RegisterServerEvent('ox_property:storeVehicle', function(data)
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].zones[data.zoneId]
+    local zone = properties[data.property].components[data.zoneId]
 
     if not isPermitted(player, zone, false) then return end
 
@@ -332,7 +329,7 @@ exports('findClearSpawn', findClearSpawn)
 
 RegisterServerEvent('ox_property:retrieveVehicle', function(data)
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].zones[data.zoneId]
+    local zone = properties[data.property].components[data.zoneId]
 
     if not isPermitted(player, zone, false) then return end
 
@@ -357,7 +354,7 @@ end)
 
 RegisterServerEvent('ox_property:moveVehicle', function(data)
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].zones[data.zoneId]
+    local zone = properties[data.property].components[data.zoneId]
 
     if not isPermitted(player, zone, false) then return end
 
@@ -452,7 +449,7 @@ end)
 local ox_appearance = exports.ox_appearance
 lib.callback.register('ox_property:getOutfits', function(source, data)
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].zones[data.zoneId]
+    local zone = properties[data.property].components[data.zoneId]
 
     if not isPermitted(player, zone, false) then return end
 
@@ -461,7 +458,7 @@ end)
 
 RegisterNetEvent('ox_property:saveOutfit', function(data, appearance)
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].zones[data.zoneId]
+    local zone = properties[data.property].components[data.zoneId]
 
     if not isPermitted(player, zone, false) then return end
 
@@ -470,7 +467,7 @@ end)
 
 RegisterNetEvent('ox_property:applyOutfit', function(data)
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].zones[data.zoneId]
+    local zone = properties[data.property].components[data.zoneId]
 
     if not isPermitted(player, zone, false) then return end
 
