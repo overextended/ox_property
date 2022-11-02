@@ -376,18 +376,18 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
             recover = true
             break
         end
+    end
+
+    if not vehicle then
+        vehicle = MySQL.single.await('SELECT model, data, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 
         if not vehicle then
-            vehicle = MySQL.single.await('SELECT model, data, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
-
-            if not vehicle then
-                TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle not found', type = 'error'})
-                return
-            end
-
-            recover = not vehicle.stored or not vehicle.stored:find(':')
-            db = true
+            TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle not found', type = 'error'})
+            return
         end
+
+        recover = not vehicle.stored or not vehicle.stored:find(':')
+        db = true
     end
 
     local balance = exports.pefcl:getDefaultAccountBalance(player.source).data
