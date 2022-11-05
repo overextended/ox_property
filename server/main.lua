@@ -1,4 +1,5 @@
 local defaultOwner = nil
+local defaultGroup = nil
 local properties = {}
 
 local function loadResourceDataFiles()
@@ -38,11 +39,13 @@ local function loadResourceDataFiles()
 
         if existingProperty then
             v.owner = existingProperty.owner
+            v.group = existingProperty.group
             v.permissions = existingProperty.permissions
         else
             v.owner = defaultOwner
+            v.group = defaultGroup
             v.permissions = {}
-            propertyInsert[#propertyInsert + 1] = {k, defaultOwner}
+            propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultGroup}
         end
 
         for i = 1, #v.components do
@@ -57,7 +60,7 @@ local function loadResourceDataFiles()
     GlobalState['Properties'] = properties
 
     if next(propertyInsert) then
-        MySQL.prepare('INSERT INTO ox_property (name, owner) VALUES (?, ?)', propertyInsert)
+        MySQL.prepare('INSERT INTO ox_property (name, owner, group) VALUES (?, ?, ?)', propertyInsert)
     end
 end
 exports('loadDataFiles', loadResourceDataFiles)
