@@ -1,4 +1,5 @@
 local defaultOwner = nil
+local defaultOwnerName = nil
 local defaultGroup = nil
 local properties = {}
 
@@ -25,7 +26,8 @@ local function loadResourceDataFiles()
         files[file] = func()
     end
 
-    local result = MySQL.query.await('SELECT * FROM ox_property')
+    defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {defaultOwner})
+    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstname, " ", characters.lastname) AS ownerName FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charid')
 
     local existingProperties = {}
     for i = 1, #result do
@@ -39,14 +41,18 @@ local function loadResourceDataFiles()
 
         if existingProperty then
             v.owner = existingProperty.owner
+            v.ownerName = existingProperty.ownerName
             v.group = existingProperty.group
             v.permissions = existingProperty.permissions
         else
             v.owner = defaultOwner
+            v.ownerName = defaultOwnerName
             v.group = defaultGroup
             v.permissions = {}
             propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultGroup}
         end
+
+        v.groupName = v.group and GlobalState[('group.%s'):format(v.group)].label
 
         for i = 1, #v.components do
             local component = v.components[i]
