@@ -52,10 +52,10 @@ local function loadResourceDataFiles()
             v.owner = defaultOwner
             v.ownerName = defaultOwnerName
             v.permissions = {{}}
-            v.group = defaultOwner and defaultGroup
-            v.groupName = defaultOwner and defaultGroupName
+            v.group = defaultGroup
+            v.groupName = defaultGroupName
 
-            propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultOwner and defaultGroup}
+            propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultGroup}
         end
 
         for i = 1, #v.components do
