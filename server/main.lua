@@ -82,15 +82,31 @@ AddEventHandler('onResourceStart', function(resource)
     loadResourceDataFiles()
 end)
 
-local function isPermitted(player, zone)
-    do return true end
-    local property = properties[zone.property]
-    player = Ox.GetPlayer(player.source)
-    if player.hasGroup(zone.groups) then return true end
+local function isPermitted(playerId, component, noError)
+    local player = Ox.GetPlayer(playerId)
+    local property = properties[component.property]
 
-    if property.owner == player.charid then return true end
+    if player.charid == property.owner then
+        return 1
+    end
 
-    TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
+    if property.group and player.getGroup(property.group) == #GlobalState[('group.%s'):format(property.group)].grades then
+        return 1
+    end
+
+    if next(property.permissions) then
+        for i = 1, #property.permissions do
+            local level = property.permissions[i]
+            local access = i == 1 and 1 or level.components[component.componentId]
+            if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
+                return access
+            end
+        end
+    end
+
+    if not noError then
+        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
+    end
     return false
 end
 exports('isPermitted', isPermitted)
