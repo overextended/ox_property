@@ -7,16 +7,19 @@ return {
             name = 'Garage Stash',
 			type = 'stash',
             point = vec(25.3, 544.6, 176.0),
+            shared = true,
         },
         {
             name = 'Dining Stash',
 			type = 'stash',
             point = vec(-7.0, 530.2, 175.0),
+            shared = true,
         },
         {
             name = 'Bedroom Stash',
 			type = 'stash',
             point = vec(-1.5, 525.9, 170.6),
+            shared = true,
         },
         {
             name = 'Management',

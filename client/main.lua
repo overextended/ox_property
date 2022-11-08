@@ -693,8 +693,7 @@ RegisterCommand('openZone', function()
     if IsPauseMenuActive() or IsNuiFocused() then return end
 
     local closestPoint = lib.points.closest()
-
-    if closestPoint and closestPoint.type == 'stash' and closestPoint.currentDistance < 1 then
+    if closestPoint and closestPoint.currentDistance < 1 then
         return exports.ox_inventory:openInventory('stash', closestPoint.name)
     end
 

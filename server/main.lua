@@ -3,6 +3,37 @@ local defaultOwnerName = nil
 local defaultGroup = nil
 local defaultGroupName = nil
 local properties = {}
+local stashes = {}
+local stashHook
+
+local function isPermitted(playerId, component, noError)
+    local player = Ox.GetPlayer(playerId)
+    local property = properties[component.property]
+
+    if player.charid == property.owner then
+        return 1
+    end
+
+    if property.group and player.getGroup(property.group) == #GlobalState[('group.%s'):format(property.group)].grades then
+        return 1
+    end
+
+    if next(property.permissions) then
+        for i = 1, #property.permissions do
+            local level = property.permissions[i]
+            local access = i == 1 and 1 or level.components[component.componentId]
+            if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
+                return access
+            end
+        end
+    end
+
+    if not noError then
+        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
+    end
+    return false
+end
+exports('isPermitted', isPermitted)
 
 local function loadResourceDataFiles()
     local resource = GetInvokingResource() or cache.resource
@@ -63,13 +94,35 @@ local function loadResourceDataFiles()
             component.property = k
 
             if component.type == 'stash' then
-                -- exports.ox_inventory:RegisterStash(('%s:%s'):format(k, i), ('%s - %s'):format(k, component.name), component.slots or 50, component.maxWeight or 50000, owner, not component.public and component.groups, component.coords)
+                local stashName = ('%s:%s'):format(k, i)
+                stashes[stashName] = true
+
+                exports.ox_inventory:RegisterStash(stashName, ('%s - %s'):format(v.label, component.name), component.slots or 50, component.maxWeight or 50000, not component.shared == true, nil, component.coords)
             end
         end
 
         properties[k] = v
     end
     GlobalState['Properties'] = properties
+
+    local stashesArray = {}
+    for stash in pairs(stashes) do
+        stashesArray[#stashesArray + 1] = stash
+    end
+
+    if stashHook then
+        exports.ox_inventory:removeHooks(stashHook)
+        stashHook = nil
+    end
+
+    stashHook = exports.ox_inventory:registerHook('openInventory', function(payload)
+        local property, componentId = string.strsplit(':', payload.inventoryId)
+        if not isPermitted(payload.source, properties[property].components[tonumber(componentId)], true) then
+            return false
+        end
+    end, {
+        inventoryFilter = stashesArray
+    })
 
     if next(propertyInsert) then
         MySQL.prepare('INSERT INTO ox_property (name, owner, `group`) VALUES (?, ?, ?)', propertyInsert)
@@ -81,35 +134,6 @@ AddEventHandler('onResourceStart', function(resource)
     if resource ~= cache.resource then return end
     loadResourceDataFiles()
 end)
-
-local function isPermitted(playerId, component, noError)
-    local player = Ox.GetPlayer(playerId)
-    local property = properties[component.property]
-
-    if player.charid == property.owner then
-        return 1
-    end
-
-    if property.group and player.getGroup(property.group) == #GlobalState[('group.%s'):format(property.group)].grades then
-        return 1
-    end
-
-    if next(property.permissions) then
-        for i = 1, #property.permissions do
-            local level = property.permissions[i]
-            local access = i == 1 and 1 or level.components[component.componentId]
-            if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
-                return access
-            end
-        end
-    end
-
-    if not noError then
-        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
-    end
-    return false
-end
-exports('isPermitted', isPermitted)
 
 lib.callback.register('ox_property:getDisplayData', function(source, data)
     local player = Ox.GetPlayer(source)
