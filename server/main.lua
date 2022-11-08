@@ -72,7 +72,7 @@ local function loadResourceDataFiles()
     GlobalState['Properties'] = properties
 
     if next(propertyInsert) then
-        MySQL.prepare('INSERT INTO ox_property (name, owner, group) VALUES (?, ?, ?)', propertyInsert)
+        MySQL.prepare('INSERT INTO ox_property (name, owner, `group`) VALUES (?, ?, ?)', propertyInsert)
     end
 end
 exports('loadDataFiles', loadResourceDataFiles)
