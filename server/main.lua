@@ -60,6 +60,7 @@ local function loadResourceDataFiles()
 
         for i = 1, #v.components do
             local component = v.components[i]
+            component.property = k
 
             if component.type == 'stash' then
                 -- exports.ox_inventory:RegisterStash(('%s:%s'):format(k, i), ('%s - %s'):format(k, component.name), component.slots or 50, component.maxWeight or 50000, owner, not component.public and component.groups, component.coords)
