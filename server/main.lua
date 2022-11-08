@@ -1,6 +1,7 @@
 local defaultOwner = nil
 local defaultOwnerName = nil
 local defaultGroup = nil
+local defaultGroupName = nil
 local properties = {}
 
 local function loadResourceDataFiles()
@@ -27,7 +28,9 @@ local function loadResourceDataFiles()
     end
 
     defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {defaultOwner})
-    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstname, " ", characters.lastname) AS ownerName FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charid')
+    defaultGroupName = defaultGroupName or defaultGroup and MySQL.scalar.await('SELECT label FROM ox_groups WHERE name = ?', {defaultGroup})
+
+    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstname, " ", characters.lastname) AS ownerName, ox_groups.label as ownerLabel FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charid LEFT JOIN ox_groups ON ox_property.group = ox_groups.name')
 
     local existingProperties = {}
     for i = 1, #result do
@@ -42,20 +45,22 @@ local function loadResourceDataFiles()
         if existingProperty then
             v.owner = existingProperty.owner
             v.ownerName = existingProperty.ownerName
-            v.group = existingProperty.group
             v.permissions = existingProperty.permissions
+            v.group = existingProperty.group
+            v.groupName = existingProperty.groupName
         else
             v.owner = defaultOwner
             v.ownerName = defaultOwnerName
-            v.group = defaultGroup
-            v.permissions = {}
-            propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultGroup}
-        end
+            v.permissions = {{}}
+            v.group = defaultOwner and defaultGroup
+            v.groupName = defaultOwner and defaultGroupName
 
-        v.groupName = v.group and GlobalState[('group.%s'):format(v.group)].label
+            propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultOwner and defaultGroup}
+        end
 
         for i = 1, #v.components do
             local component = v.components[i]
+
             if component.type == 'stash' then
                 -- exports.ox_inventory:RegisterStash(('%s:%s'):format(k, i), ('%s - %s'):format(k, component.name), component.slots or 50, component.maxWeight or 50000, owner, not component.public and component.groups, component.coords)
             end
