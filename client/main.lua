@@ -592,60 +592,28 @@ local function loadProperties(value)
                         end
                     end
 
-                    local zoneData
-                    if component.points then
-                        zoneData = lib.zones.poly({
-                            points = component.points,
-                            thickness = component.thickness,
+                    local zoneData = lib.zones[component.points and 'poly' or component.box and 'box' or component.sphere and 'sphere']({
+                        points = component.points,
+                        thickness = component.thickness,
+                        coords = component.box or component.sphere,
+                        rotation = component.rotation,
+                        size = component.size or vec3(2),
+                        radius = component.radius,
 
-                            onEnter = onEnter,
-                            onExit = onExit,
+                        onEnter = onEnter,
+                        onExit = onExit,
 
-                            property = k,
-                            propertyLabel = v.label,
-                            zoneId = i,
-                            name = component.name,
-                            type = component.type,
-                            owner = component.owner,
-                            groups = component.groups,
-                            public = component.public,
-                        })
-                    elseif component.box then
-                        zoneData = lib.zones.box({
-                            coords = component.box,
-                            rotation = component.rotation,
-                            size = component.size or vec3(2),
+                        property = k,
+                        propertyLabel = v.label,
+                        componentId = i,
+                        name = component.name,
+                        owner = component.owner,
+                        ownerName = component.ownerName,
+                        group = component.group,
+                        groupName = component.groupName,
+                        permissions = component.permissions,
+                    })
 
-                            onEnter = onEnter,
-                            onExit = onExit,
-
-                            property = k,
-                            propertyLabel = v.label,
-                            zoneId = i,
-                            name = component.name,
-                            type = component.type,
-                            owner = component.owner,
-                            groups = component.groups,
-                            public = component.public,
-                        })
-                    elseif component.sphere then
-                        zoneData = lib.zones.sphere({
-                            coords = component.sphere,
-                            radius = component.radius,
-
-                            onEnter = onEnter,
-                            onExit = onExit,
-
-                            property = k,
-                            propertyLabel = v.label,
-                            zoneId = i,
-                            name = component.name,
-                            type = component.type,
-                            owner = component.owner,
-                            groups = component.groups,
-                            public = component.public,
-                        })
-                    end
                     components[k][i] = zoneData
 
                     if component.disableGenerators then
