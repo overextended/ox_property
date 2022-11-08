@@ -39,7 +39,7 @@ local function vehicleList(data)
         local zoneName = vehicle.stored and vehicle.stored:gsub('^%l', string.upper) or 'Unknown'
         local stored = vehicle.stored and vehicle.stored:find(':')
 
-        if stored and vehicle.stored == ('%s:%s'):format(currentZone.property, currentZone.zoneId) then
+        if stored and vehicle.stored == ('%s:%s'):format(currentZone.property, currentZone.componentId) then
             zoneName = 'Current Zone'
         end
 
@@ -54,14 +54,14 @@ local function vehicleList(data)
                 if args.action == 'Retrieve' then
                     TriggerServerEvent('ox_property:retrieveVehicle', {
                         property = currentZone.property,
-                        zoneId = currentZone.zoneId,
+                        componentId = currentZone.componentId,
                         plate = args.plate,
                         entities = getZoneEntities()
                     })
                 else
                     TriggerServerEvent('ox_property:moveVehicle', {
                         property = currentZone.property,
-                        zoneId = currentZone.zoneId,
+                        componentId = currentZone.componentId,
                         plate = args.plate
                     })
                 end
@@ -395,7 +395,7 @@ local zoneMenus = {
         local options = {}
         local allVehicles, zoneVehicles, vehicleData = lib.callback.await('ox_property:getVehicleList', 100, {
             property = currentZone.property,
-            zoneId = currentZone.zoneId
+            componentId = currentZone.componentId
         })
 
         if cache.seat == -1 then
@@ -405,7 +405,7 @@ local zoneMenus = {
                     if cache.seat == -1 then
                         TriggerServerEvent('ox_property:storeVehicle', {
                             property = currentZone.property,
-                            zoneId = currentZone.zoneId,
+                            componentId = currentZone.componentId,
                             properties = lib.getVehicleProperties(cache.vehicle)
                         })
                     else
@@ -448,7 +448,7 @@ local zoneMenus = {
         local options = {}
         local personalOutfits, zoneOutfits = lib.callback.await('ox_property:getOutfits', 100, {
             property = currentZone.property,
-            zoneId = currentZone.zoneId
+            componentId = currentZone.componentId
         })
 
         if currentZone.outfits then
@@ -457,7 +457,7 @@ local zoneMenus = {
                 event = 'ox_property:outfits',
                 args = {
                     property = currentZone.property,
-                    zoneId = currentZone.zoneId,
+                    componentId = currentZone.componentId,
                     outfitNames = zoneOutfits,
                     zoneOutfits = true
                 }
@@ -469,7 +469,7 @@ local zoneMenus = {
                 event = 'ox_property:saveOutfit',
                 args = {
                     property = currentZone.property,
-                    zoneId = currentZone.zoneId,
+                    componentId = currentZone.componentId,
                     slot = 'new',
                     name = '',
                     outfitNames = zoneOutfits
@@ -482,7 +482,7 @@ local zoneMenus = {
             event = 'ox_property:outfits',
             args = {
                 property = currentZone.property,
-                zoneId = currentZone.zoneId,
+                componentId = currentZone.componentId,
                 outfitNames = personalOutfits
             }
         }
@@ -568,7 +568,8 @@ local function loadProperties(value)
 
                 if component.point then
                     components[k][i] = lib.points.new(component.point, 16, {
-                        type = 'stash',
+                        property = k,
+                        componentId = i,
                         name = ('%s:%s'):format(k, i),
                         nearby = nearbyPoint,
                     })
@@ -584,7 +585,7 @@ local function loadProperties(value)
                     end
 
                     local onExit = function(self)
-                        if currentZone.property == self.property and currentZone.zoneId == self.zoneId then
+                        if currentZone.property == self.property and currentZone.componentId == self.componentId then
                             table.wipe(currentZone)
                             if zoneContexts[lib.getOpenContextMenu()] then lib.hideContext() end
                             if zoneLists[lib.getOpenMenu()] then lib.hideMenu() end
@@ -667,7 +668,7 @@ end
 loadProperties(GlobalState['Properties'])
 
 exports('getCurrentZone', function()
-    return {property = currentZone.property, zoneId = currentZone.zoneId, name = currentZone.name}
+    return {property = currentZone.property, componentId = currentZone.componentId}
 end)
 
 AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, reserved, replicated)
@@ -749,7 +750,7 @@ end)
 RegisterKeyMapping('openZone', 'Zone Menu', 'keyboard', 'e')
 
 local function checkCurrentZone(data)
-    if currentZone.property == data.property and currentZone.zoneId == data.zoneId then return true end
+    if currentZone.property == data.property and currentZone.componentId == data.componentId then return true end
 
     lib.notify({title = 'Zone Mismatch', type = 'error'})
     return false
@@ -766,7 +767,7 @@ RegisterNetEvent('ox_property:outfits', function(data)
             event = data.zoneOutfits and 'ox_property:setOutfit' or 'ox_appearance:setOutfit',
             args = data.zoneOutfits and {
                 property = currentZone.property,
-                zoneId = currentZone.zoneId,
+                componentId = currentZone.componentId,
                 slot = k,
                 name = v,
                 outfitNames = data.outfitNames
@@ -798,7 +799,7 @@ AddEventHandler('ox_property:setOutfit', function(data)
                 serverEvent = 'ox_property:applyOutfit',
                 args = {
                     property = currentZone.property,
-                    zoneId = currentZone.zoneId,
+                    componentId = currentZone.componentId,
                     slot = data.slot
                 }
             },
@@ -807,7 +808,7 @@ AddEventHandler('ox_property:setOutfit', function(data)
                 event = 'ox_property:saveOutfit',
                 args = {
                     property = currentZone.property,
-                    zoneId = currentZone.zoneId,
+                    componentId = currentZone.componentId,
                     slot = data.slot,
                     name = data.name,
                     outfitNames = data.outfitNames
