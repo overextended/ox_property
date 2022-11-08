@@ -671,10 +671,14 @@ RegisterCommand('openZone', function()
 
         local data, menuType = zoneMenus[currentZone.type]({
             property = currentZone.property,
-            zoneId = currentZone.zoneId,
+            propertyLabel = currentZone.propertyLabel,
+            componentId = currentZone.componentId,
+            name = currentZone.name,
             owner = currentZone.owner,
-            groups = currentZone.groups,
-            public = currentZone.public
+            ownerName = currentZone.ownerName,
+            group = currentZone.group,
+            groupName = currentZone.groupName,
+            permissions = currentZone.permissions,
         })
 
         if data.event then
