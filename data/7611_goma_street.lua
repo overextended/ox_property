@@ -7,21 +7,25 @@ return {
             name = 'Parking Stash',
 			type = 'stash',
             point = vec(-1147.2, -1525.4, 4.3),
+            shared = true,
         },
         {
             name = 'Stairs Stash',
 			type = 'stash',
             point = vec(-1144.7, -1518.0, 4.3),
+            shared = true,
         },
         {
             name = 'Entrance Stash',
 			type = 'stash',
             point = vec(-1152.8, -1516.9, 10.6),
+            shared = true,
         },
         {
             name = 'Management',
             type = 'management',
             sphere = vec(-1156.7, -1517.9, 10.6),
+            shared = true,
         },
         {
             name = 'Wardrobe',

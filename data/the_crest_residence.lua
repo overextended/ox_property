@@ -7,11 +7,13 @@ return {
             name = 'Electronics Stash',
 			type = 'stash',
             point = vec(1272.1, -1711.9, 54.8),
+            shared = true,
         },
         {
             name = 'Chemicals Stash',
 			type = 'stash',
             point = vec(1268.6, -1710.4, 54.8),
+            shared = true,
         },
         {
             name = 'Management',
