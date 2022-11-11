@@ -39,19 +39,26 @@ local function vehicleList(data)
         local vehicle = data.vehicles[i]
         vehicle.data = vehicleData[vehicle.model]
 
-        local zoneName = vehicle.stored and vehicle.stored:gsub('^%l', string.upper) or 'Unknown'
+        local location = 'Unknown'
         local stored = vehicle.stored and vehicle.stored:find(':')
 
-        if stored and vehicle.stored == ('%s:%s'):format(currentZone.property, currentZone.componentId) then
-            zoneName = 'Current Zone'
+        if stored then
+            if vehicle.stored == ('%s:%s'):format(currentZone.property, currentZone.componentId) then
+                location = 'Current Zone'
+            else
+                local propertyName, componentId = string.strsplit(':', vehicle.stored)
+                if properties[propertyName] then
+                    location = ('%s:%s'):format(properties[propertyName].label, componentId)
+                end
+            end
         end
 
-        local action = zoneName == 'Current Zone' and 'Retrieve' or stored and 'Move' or 'Recover'
+        local action = location == 'Current Zone' and 'Retrieve' or stored and 'Move' or 'Recover'
 
         options[('%s - %s'):format(vehicle.data.name, vehicle.plate)] = {
             metadata = {
                 ['Action'] = action,
-                ['Location'] = zoneName
+                ['Location'] = location
             },
             onSelect = function(args)
                 if args.action == 'Retrieve' then
@@ -78,7 +85,7 @@ local function vehicleList(data)
 
     lib.registerContext({
         id = 'vehicle_list',
-        title = data.zoneOnly and ('%s - %s - Vehicles'):format(property.label, currentZone.name) or 'All Vehicles',
+        title = data.zoneOnly and ('%s - %s - Vehicles'):format(properties[currentZone.property].label, currentZone.name) or 'All Vehicles',
         menu = 'component_menu',
         options = options
     })
