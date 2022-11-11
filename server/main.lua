@@ -272,12 +272,14 @@ RegisterServerEvent('ox_property:resetPermitted', function(data)
 end)
 
 lib.callback.register('ox_property:getVehicleList', function(source, data)
+    local component = properties[data.property].components[data.componentId]
+
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
+
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].components[data.zoneId]
 
-    if not isPermitted(player, zone, false) then return end
-
-    local vehicles = data.propertyOnly and MySQL.query.await('SELECT * FROM vehicles WHERE stored LIKE ? AND owner = ?', {('%s%%'):format(data.property), player.charid}) or MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid})
+    local vehicles = data.propertyOnly and MySQL.query.await('SELECT * FROM vehicles WHERE stored LIKE ? AND owner = ?', {('%s%%'):format(component.property), player.charid}) or MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid})
 
     local vehicleModels = {}
     local zoneVehicles = {}
@@ -325,11 +327,12 @@ end
 exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
 
 RegisterServerEvent('ox_property:storeVehicle', function(data)
+    local component = properties[data.property].components[data.componentId]
+
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
+
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].components[data.zoneId]
-
-    if not isPermitted(player, zone, false) then return end
-
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(GetPlayerPed(player.source), false))
     if not vehicle then
         TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to store', type = 'error'})
@@ -338,12 +341,12 @@ RegisterServerEvent('ox_property:storeVehicle', function(data)
 
     vehicle.data = Ox.GetVehicleData(vehicle.model)
 
-    if player.charid == vehicle.owner and zone.vehicles[vehicle.data.type] then
+    if player.charid == vehicle.owner and component.vehicles[vehicle.data.type] then
         clearVehicleOfPassengers(vehicle)
 
         vehicle.set('properties', data.properties)
         vehicle.set('display')
-        vehicle.setStored(('%s:%s'):format(data.property, data.zoneId), true)
+        vehicle.setStored(('%s:%s'):format(component.property, component.componentId), true)
 
         TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle stored', type = 'success'})
         TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'store')
@@ -383,21 +386,22 @@ end
 exports('findClearSpawn', findClearSpawn)
 
 RegisterServerEvent('ox_property:retrieveVehicle', function(data)
+    local component = properties[data.property].components[data.componentId]
+
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
+
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].components[data.zoneId]
-
-    if not isPermitted(player, zone, false) then return end
-
     local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 
-    if not vehicle or vehicle.stored ~= ('%s:%s'):format(data.property, data.zoneId) then
+    if not vehicle or vehicle.stored ~= ('%s:%s'):format(component.property, component.componentId) then
         TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle is not stored', type = 'error'})
         return
     end
 
-    local spawn = findClearSpawn(zone.spawns, data.entities)
+    local spawn = findClearSpawn(component.spawns, data.entities)
 
-    if spawn and zone.vehicles[Ox.GetVehicleData(vehicle.model).type] then
+    if spawn and component.vehicles[Ox.GetVehicleData(vehicle.model).type] then
         Ox.CreateVehicle(vehicle.id, spawn.coords, spawn.heading)
 
         TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
@@ -408,11 +412,13 @@ RegisterServerEvent('ox_property:retrieveVehicle', function(data)
 end)
 
 RegisterServerEvent('ox_property:moveVehicle', function(data)
+    local property = properties[data.property]
+    local component = property.components[data.componentId]
+
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
+
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].components[data.zoneId]
-
-    if not isPermitted(player, zone, false) then return end
-
     local vehicles = Ox.GetVehicles(true)
     local vehicle, recover, db
 
@@ -503,28 +509,29 @@ end)
 
 local ox_appearance = exports.ox_appearance
 lib.callback.register('ox_property:getOutfits', function(source, data)
+    local component = properties[data.property].components[data.componentId]
+
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
+
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].components[data.zoneId]
-
-    if not isPermitted(player, zone, false) then return end
-
-    return ox_appearance:outfitNames(player.charid) or {}, ox_appearance:outfitNames(('%s:%s'):format(data.property, data.zoneId)) or {}
+    return ox_appearance:outfitNames(player.charid) or {}, ox_appearance:outfitNames(('%s:%s'):format(component.property, component.componentId)) or {}
 end)
 
 RegisterNetEvent('ox_property:saveOutfit', function(data, appearance)
-    local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].components[data.zoneId]
+    local component = properties[data.property].components[data.componentId]
 
-    if not isPermitted(player, zone, false) then return end
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
 
-    ox_appearance:saveOutfit(('%s:%s'):format(data.property, data.zoneId), appearance, data.slot, data.outfitNames)
+    ox_appearance:saveOutfit(('%s:%s'):format(component.property, component.componentId), appearance, data.slot, data.outfitNames)
 end)
 
 RegisterNetEvent('ox_property:applyOutfit', function(data)
-    local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].components[data.zoneId]
+    local component = properties[data.property].components[data.componentId]
 
-    if not isPermitted(player, zone, false) then return end
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
 
-    TriggerClientEvent('ox_property:applyOutfit', source, ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.zoneId), data.slot) or {})
+    TriggerClientEvent('ox_property:applyOutfit', source, ox_appearance:loadOutfit(('%s:%s'):format(component.property, component.componentId), data.slot) or {})
 end)
