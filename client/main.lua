@@ -2,8 +2,10 @@ local table = lib.table
 local properties = {}
 local components = {}
 local currentZone = {}
-local zoneContexts = {zone_menu = true, vehicle_list = true}
-local zoneLists = {zone_menu = true, edit_permissions = true}
+local menus = {
+    contextMenus = {component_menu = true, vehicle_list = true},
+    listMenus = {component_menu = true, edit_permissions = true}
+}
 
 local function getZoneEntities()
     local entities = {}
@@ -75,16 +77,16 @@ local function vehicleList(data)
 
     lib.registerContext({
         id = 'vehicle_list',
-        title = data.zoneOnly and ('%s - %s - Vehicles'):format(currentZone.property, currentZone.name) or 'All Vehicles',
-        menu = 'zone_menu',
+        title = data.zoneOnly and ('%s - %s - Vehicles'):format(property.label, currentZone.name) or 'All Vehicles',
+        menu = 'component_menu',
         options = options
     })
 
     lib.showContext('vehicle_list')
 end
 
-local zoneMenus = {
-    management = function(currentZone)
+local componentActions = {
+    management = function(component)
         local displayData = lib.callback.await('ox_property:getDisplayData', 100, {
             property = currentZone.property,
             zoneId = currentZone.zoneId,
@@ -391,11 +393,11 @@ local zoneMenus = {
             end
         }, 'list'
     end,
-    parking = function(currentZone)
+    parking = function(component)
         local options = {}
         local allVehicles, zoneVehicles, vehicleData = lib.callback.await('ox_property:getVehicleList', 100, {
-            property = currentZone.property,
-            componentId = currentZone.componentId
+            property = component.property,
+            componentId = component.componentId
         })
 
         if cache.seat == -1 then
@@ -404,8 +406,8 @@ local zoneMenus = {
                 onSelect = function()
                     if cache.seat == -1 then
                         TriggerServerEvent('ox_property:storeVehicle', {
-                            property = currentZone.property,
-                            componentId = currentZone.componentId,
+                            property = component.property,
+                            componentId = component.componentId,
                             properties = lib.getVehicleProperties(cache.vehicle)
                         })
                     else
@@ -442,22 +444,25 @@ local zoneMenus = {
             }
         end
 
-        return {options = options}, 'context'
+        return {options = options}, 'contextMenu'
     end,
-    wardrobe = function(currentZone)
+    stash = function(component)
+        return {fun = function() exports.ox_inventory:openInventory('stash', component.name) end}, 'function'
+    end,
+    wardrobe = function(component)
         local options = {}
         local personalOutfits, zoneOutfits = lib.callback.await('ox_property:getOutfits', 100, {
-            property = currentZone.property,
-            componentId = currentZone.componentId
+            property = component.property,
+            componentId = component.componentId
         })
 
-        if currentZone.outfits then
+        if component.outfits then
             options[#options + 1] = {
                 title = 'Zone wardrobe',
                 event = 'ox_property:outfits',
                 args = {
-                    property = currentZone.property,
-                    componentId = currentZone.componentId,
+                    property = component.property,
+                    componentId = component.componentId,
                     outfitNames = zoneOutfits,
                     zoneOutfits = true
                 }
@@ -468,8 +473,8 @@ local zoneMenus = {
                 arrow = true,
                 event = 'ox_property:saveOutfit',
                 args = {
-                    property = currentZone.property,
-                    componentId = currentZone.componentId,
+                    property = component.property,
+                    componentId = component.componentId,
                     slot = 'new',
                     name = '',
                     outfitNames = zoneOutfits
@@ -481,8 +486,8 @@ local zoneMenus = {
             title = 'Personal wardrobe',
             event = 'ox_property:outfits',
             args = {
-                property = currentZone.property,
-                componentId = currentZone.componentId,
+                property = component.property,
+                componentId = component.componentId,
                 outfitNames = personalOutfits
             }
         }
@@ -494,31 +499,21 @@ local zoneMenus = {
             args = {slot = 'new', name = ''}
         }
 
-        return {options = options}, 'context'
+        return {options = options}, 'contextMenu'
     end
 }
 
-exports('registerZoneMenu', function(zone, menu, subMenus)
-    zoneMenus[zone] = menu
+exports('registerComponentAction', function(componentType, action, subMenus)
+    componentActions[componentType] = action
 
     if type(subMenus) == 'table' then
-        if subMenus.zoneContexts then
-            if type(subMenus.zoneContexts) == 'table' then
-                for i = 1, #subMenus.zoneContexts do
-                    zoneContexts[subMenus.zoneContexts[i]] = true
+        for menuType, menu in pairs(subMenus) do
+            if type(menu) == 'table' then
+                for i = 1, #menu do
+                    menus[menuType][menu[i]] = true
                 end
-            elseif type(subMenus.zoneContexts) == 'string' then
-                zoneContexts[subMenus.zoneContexts] = true
-            end
-        end
-
-        if subMenus.zoneLists then
-            if type(subMenus.zoneLists) == 'table' then
-                for i = 1, #subMenus.zoneLists do
-                    zoneLists[subMenus.zoneLists[i]] = true
-                end
-            elseif type(subMenus.zoneLists) == 'string' then
-                zoneLists[subMenus.zoneLists] = true
+            elseif type(menu) == 'string' then
+                menus[menuType][menu] = true
             end
         end
     end
@@ -588,8 +583,8 @@ local function loadProperties(value)
                     local onExit = function(self)
                         if currentZone.property == self.property and currentZone.componentId == self.componentId then
                             table.wipe(currentZone)
-                            if zoneContexts[lib.getOpenContextMenu()] then lib.hideContext() end
-                            if zoneLists[lib.getOpenMenu()] then lib.hideMenu() end
+                            if menus.contextMenus[lib.getOpenContextMenu()] then lib.hideContext() end
+                            if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() end
                         end
                     end
 
@@ -671,70 +666,72 @@ local function isPermitted()
 end
 exports('isPermitted', isPermitted)
 
-RegisterCommand('openZone', function()
-    if zoneContexts[lib.getOpenContextMenu()] then lib.hideContext() return end
-    if zoneLists[lib.getOpenMenu()] then lib.hideMenu() return end
+RegisterCommand('triggerComponent', function()
+    if menus.contextMenus[lib.getOpenContextMenu()] then lib.hideContext() return end
+    if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() return end
     if IsPauseMenuActive() or IsNuiFocused() then return end
 
+    local component
     local closestPoint = lib.points.closest()
     if closestPoint and closestPoint.currentDistance < 1 then
-        return exports.ox_inventory:openInventory('stash', closestPoint.name)
+        component = closestPoint
+    elseif next(currentZone) and isPermitted() then
+        component = currentZone
+    else
+        return
     end
 
-    if next(currentZone) then
-        if not isPermitted(false) then return end
+    local data, actionType = componentActions[component.type]({
+        property = component.property,
+        propertyLabel = component.propertyLabel,
+        componentId = component.componentId,
+        name = component.name,
+        owner = component.owner,
+        ownerName = component.ownerName,
+        group = component.group,
+        groupName = component.groupName,
+        permissions = component.permissions,
+    })
 
-        local data, menuType = zoneMenus[currentZone.type]({
-            property = currentZone.property,
-            propertyLabel = currentZone.propertyLabel,
-            componentId = currentZone.componentId,
-            name = currentZone.name,
-            owner = currentZone.owner,
-            ownerName = currentZone.ownerName,
-            group = currentZone.group,
-            groupName = currentZone.groupName,
-            permissions = currentZone.permissions,
-        })
+    if actionType == 'function' then
+        data.fun(data.args)
+    elseif actionType == 'event' then
+        TriggerEvent(data.event, data.args)
+    elseif actionType == 'serverEvent' then
+        TriggerServerEvent(data.serverEvent, data.args)
+    elseif actionType == 'listMenu' then
+        lib.registerMenu({
+            id = 'component_menu',
+            title = data.title or component.name,
+            options = data.options,
+            position = data.position or 'top-left',
+            disableInput = data.disableInput,
+            canClose = data.canClose,
+            onClose = data.onClose,
+            onSelected = data.onSelected,
+            onSideScroll = data.onSideScroll,
+        }, data.cb)
+        lib.showMenu('component_menu')
+    elseif actionType == 'contextMenu' then
+        local menu = {
+            id = 'component_menu',
+            title = data.title or ('%s - %s'):format(component.property, component.name),
+            canClose = data.canClose,
+            onExit = data.onExit,
+            options = data.options
+        }
 
-        if data.event then
-            TriggerEvent(data.event, data.args)
-        elseif data.serverEvent then
-            TriggerServerEvent(data.serverEvent, data.args)
-        elseif menuType == 'list' then
-            lib.registerMenu({
-                id = 'zone_menu',
-                title = data.title or currentZone.name,
-                options = data.options,
-                position = data.position or 'top-left',
-                disableInput = data.disableInput,
-                canClose = data.canClose,
-                onClose = data.onClose,
-                onSelected = data.onSelected,
-                onSideScroll = data.onSideScroll,
-            }, data.cb)
-            lib.showMenu('zone_menu')
-        elseif menuType == 'context' then
-            local menu = {
-                id = 'zone_menu',
-                title = data.title or ('%s - %s'):format(currentZone.property, currentZone.name),
-                canClose = data.canClose,
-                onExit = data.onExit,
-                options = data.options
-            }
-
-            if type(data.subMenus) == 'table' then
-                for i = 1, #data.subMenus do
-                    menu[i] = data.subMenus[i]
-                end
+        if type(data.subMenus) == 'table' then
+            for i = 1, #data.subMenus do
+                menu[i] = data.subMenus[i]
             end
-
-            lib.registerContext(menu)
-            lib.showContext('zone_menu')
         end
+
+        lib.registerContext(menu)
+        lib.showContext('component_menu')
     end
 end)
-
-RegisterKeyMapping('openZone', 'Zone Menu', 'keyboard', 'e')
+RegisterKeyMapping('triggerComponent', 'Trigger Component', 'keyboard', 'e')
 
 local function checkCurrentZone(data)
     if currentZone.property == data.property and currentZone.componentId == data.componentId then return true end
@@ -765,7 +762,7 @@ RegisterNetEvent('ox_property:outfits', function(data)
     local menu = {
         id = 'zone_wardrobe',
         title = data.zoneOutfits and ('%s - %s - Wardrobe'):format(currentZone.property, currentZone.name) or 'Personal Wardrobe',
-        menu = 'zone_menu',
+        menu = 'component_menu',
         options = options
     }
 
