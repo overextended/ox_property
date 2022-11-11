@@ -570,6 +570,7 @@ local function loadProperties(value)
                     components[k][i] = lib.points.new(component.point, 16, {
                         property = k,
                         componentId = i,
+                        type = component.type,
                         name = ('%s:%s'):format(k, i),
                         nearby = nearbyPoint,
                     })
@@ -607,6 +608,7 @@ local function loadProperties(value)
                         propertyLabel = v.label,
                         componentId = i,
                         name = component.name,
+                        type = component.type,
                         owner = component.owner,
                         ownerName = component.ownerName,
                         group = component.group,
