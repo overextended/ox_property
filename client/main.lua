@@ -704,7 +704,7 @@ RegisterCommand('triggerComponent', function()
     elseif actionType == 'contextMenu' then
         local menu = {
             id = 'component_menu',
-            title = data.title or ('%s - %s'):format(component.property, component.name),
+            title = data.title or ('%s - %s'):format(properties[component.property].label, component.name),
             canClose = data.canClose,
             onExit = data.onExit,
             options = data.options
