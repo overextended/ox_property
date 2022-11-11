@@ -645,13 +645,26 @@ AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, r
     loadProperties(value)
 end)
 
-local function isPermitted(failOnPublic)
+local function isPermitted()
     local property = properties[currentZone.property]
-    if player.hasGroup(currentZone.groups) then return true end
 
-    if property.owner == player.charid then return true end
+    if player.charid == property.owner then
+        return 1
+    end
 
-    if currentZone.public and not failOnPublic then return 'public' end
+    if property.group and player.getGroup(property.group) == #GlobalState[('group.%s'):format(property.group)].grades then
+        return 1
+    end
+
+    if next(property.permissions) then
+        for i = 1, #property.permissions do
+            local level = property.permissions[i]
+            local access = i == 1 and 1 or level.components[currentZone.componentId]
+            if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
+                return access
+            end
+        end
+    end
 
     lib.notify({title = 'Permission Denied', type = 'error'})
     return false
