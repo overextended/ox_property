@@ -2,6 +2,7 @@ local table = lib.table
 local properties = {}
 local components = {}
 local currentZone = {}
+local vehicleData = Ox.GetVehicleData()
 local menus = {
     contextMenus = {component_menu = true, vehicle_list = true},
     listMenus = {component_menu = true, edit_permissions = true}
@@ -36,7 +37,7 @@ local function vehicleList(data)
 
     for i = 1, #data.vehicles do
         local vehicle = data.vehicles[i]
-        vehicle.data = data.vehicleData[vehicle.model]
+        vehicle.data = vehicleData[vehicle.model]
 
         local zoneName = vehicle.stored and vehicle.stored:gsub('^%l', string.upper) or 'Unknown'
         local stored = vehicle.stored and vehicle.stored:find(':')
@@ -395,7 +396,7 @@ local componentActions = {
     end,
     parking = function(component)
         local options = {}
-        local allVehicles, zoneVehicles, vehicleData = lib.callback.await('ox_property:getVehicleList', 100, {
+        local allVehicles, zoneVehicles = lib.callback.await('ox_property:getVehicleList', 100, {
             property = component.property,
             componentId = component.componentId
         })
@@ -425,7 +426,6 @@ local componentActions = {
                 onSelect = vehicleList,
                 args = {
                     vehicles = zoneVehicles,
-                    vehicleData = vehicleData,
                     zoneOnly = true
                 }
             }
@@ -439,8 +439,7 @@ local componentActions = {
         if #allVehicles > 0 then
             options[#options].onSelect = vehicleList
             options[#options].args = {
-                vehicles = allVehicles,
-                vehicleData = vehicleData
+                vehicles = allVehicles
             }
         end
 

@@ -292,7 +292,7 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
         end
     end
 
-    return vehicles, zoneVehicles, Ox.GetVehicleData(vehicleModels)
+    return vehicles, zoneVehicles
 end)
 
 local function clearVehicleOfPassengers(vehicle)
