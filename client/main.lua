@@ -600,15 +600,9 @@ local function loadProperties(value)
                         onExit = onExit,
 
                         property = k,
-                        propertyLabel = v.label,
                         componentId = i,
                         name = component.name,
-                        type = component.type,
-                        owner = component.owner,
-                        ownerName = component.ownerName,
-                        group = component.group,
-                        groupName = component.groupName,
-                        permissions = component.permissions,
+                        type = component.type
                     })
 
                     components[k][i] = zoneData
@@ -683,14 +677,9 @@ RegisterCommand('triggerComponent', function()
 
     local data, actionType = componentActions[component.type]({
         property = component.property,
-        propertyLabel = component.propertyLabel,
         componentId = component.componentId,
         name = component.name,
-        owner = component.owner,
-        ownerName = component.ownerName,
-        group = component.group,
-        groupName = component.groupName,
-        permissions = component.permissions,
+        type = component.type
     })
 
     if actionType == 'function' then
