@@ -112,7 +112,6 @@ local function loadResourceDataFiles()
 
     if stashHook then
         exports.ox_inventory:removeHooks(stashHook)
-        stashHook = nil
     end
 
     stashHook = exports.ox_inventory:registerHook('openInventory', function(payload)
@@ -283,15 +282,13 @@ lib.callback.register('ox_property:getVehicleList', function(source, data)
 
     local vehicleModels = {}
     local zoneVehicles = {}
-    if data.property and data.zoneId then
-        local zone = ('%s:%s'):format(data.property, data.zoneId)
-        for i = 1, #vehicles do
-            local vehicle = vehicles[i]
-            vehicleModels[#vehicleModels + 1] = vehicle.model
+    local componentIdentifier = ('%s:%s'):format(component.property, component.componentId)
+    for i = 1, #vehicles do
+        local vehicle = vehicles[i]
+        vehicleModels[#vehicleModels + 1] = vehicle.model
 
-            if vehicle.stored == zone then
-                zoneVehicles[#zoneVehicles + 1] = vehicle
-            end
+        if vehicle.stored == componentIdentifier then
+            zoneVehicles[#zoneVehicles + 1] = vehicle
         end
     end
 
@@ -451,42 +448,30 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
         db = true
     end
 
-    local balance = exports.pefcl:getDefaultAccountBalance(player.source).data
-    local amount = recover and 1000 or 500
-
-    local owner = GlobalState[('group.%s'):format(zone.owner)]
-    local from
-    if owner then
-        from = owner.label
-    else
-        owner = MySQL.single.await('SELECT firstname, lastname FROM characters WHERE charid = ?', {zone.owner})
-        from = owner and ('%s %s'):format(owner.firstname, owner.lastname)
-    end
-
     local vehicleData = Ox.GetVehicleData(vehicle.model)
-    local message = recover and '%s Recovery' or '%s Move'
-    message = message:format(vehicleData.name)
-
-    if not zone.vehicles[vehicleData.type] then
+    if not vehicleData or not component.vehicles[vehicleData.type] then
         TriggerClientEvent('ox_lib:notify', player.source, {title = recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
         return
     end
 
-    if zone.owner ~= player.charid then
-        if balance >= amount then
+    if property.owner ~= player.charid and (property.owner or property.group)then
+        local amount = recover and 1000 or 500
+        local message = (recover and '%s Recovery' or '%s Move'):format(vehicleData.name)
+
+        if exports.pefcl:getDefaultAccountBalance(player.source).data >= amount then
             exports.pefcl:removeBankBalance(player.source, {amount = amount, message = message})
 
             exports.pefcl:addBankBalanceByIdentifier(player.source, {
-                identifier = zone.owner,
+                identifier = property.group or property.owner,
                 amount = amount,
                 message = message
             })
-            else
+        else
             exports.pefcl:createInvoice(player.source, {
                 to = player.name,
                 toIdentifier = player.charid,
-                from = from,
-                fromIdentifier = zone.owner,
+                from = property.groupName or property.ownerName,
+                fromIdentifier = property.group or property.owner,
                 amount = amount,
                 message = message
             })
@@ -497,10 +482,10 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
         vehicle.data = json.decode(vehicle.data) or {}
         vehicle.data.display = nil
 
-        MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(data.property, data.zoneId), json.encode(vehicle.data), data.plate})
+        MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(component.property, component.componentId), json.encode(vehicle.data), data.plate})
     else
         vehicle.set('display')
-        vehicle.setStored(('%s:%s'):format(data.property, data.zoneId), true)
+        vehicle.setStored(('%s:%s'):format(component.property, component.componentId), true)
     end
 
     TriggerClientEvent('ox_lib:notify', player.source, {title = recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
