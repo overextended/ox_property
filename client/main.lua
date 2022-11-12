@@ -722,6 +722,7 @@ RegisterCommand('triggerComponent', function()
             onClose = data.onClose,
             onSelected = data.onSelected,
             onSideScroll = data.onSideScroll,
+            onCheck = data.onCheck,
         }, data.cb)
         lib.showMenu('component_menu')
     elseif actionType == 'contextMenu' then
