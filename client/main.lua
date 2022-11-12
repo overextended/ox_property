@@ -43,7 +43,7 @@ local function vehicleList(data)
         local stored = vehicle.stored and vehicle.stored:find(':')
 
         if stored then
-            if vehicle.stored == ('%s:%s'):format(currentZone.property, currentZone.componentId) then
+            if vehicle.stored == ('%s:%s'):format(data.component.property, data.component.componentId) then
                 location = 'Current Zone'
             else
                 local propertyName, componentId = string.strsplit(':', vehicle.stored)
@@ -63,15 +63,15 @@ local function vehicleList(data)
             onSelect = function(args)
                 if args.action == 'Retrieve' then
                     TriggerServerEvent('ox_property:retrieveVehicle', {
-                        property = currentZone.property,
-                        componentId = currentZone.componentId,
+                        property = data.component.property,
+                        componentId = data.component.componentId,
                         plate = args.plate,
                         entities = getZoneEntities()
                     })
                 else
                     TriggerServerEvent('ox_property:moveVehicle', {
-                        property = currentZone.property,
-                        componentId = currentZone.componentId,
+                        property = data.component.property,
+                        componentId = data.component.componentId,
                         plate = args.plate
                     })
                 end
@@ -85,7 +85,7 @@ local function vehicleList(data)
 
     lib.registerContext({
         id = 'vehicle_list',
-        title = data.zoneOnly and ('%s - %s - Vehicles'):format(properties[currentZone.property].label, currentZone.name) or 'All Vehicles',
+        title = data.zoneOnly and ('%s - %s - Vehicles'):format(properties[data.component.property].label, data.component.name) or 'All Vehicles',
         menu = 'component_menu',
         options = options
     })
@@ -432,6 +432,7 @@ local componentActions = {
                 metadata = {['Vehicles'] = #zoneVehicles},
                 onSelect = vehicleList,
                 args = {
+                    component = component,
                     vehicles = zoneVehicles,
                     zoneOnly = true
                 }
@@ -446,6 +447,7 @@ local componentActions = {
         if #allVehicles > 0 then
             options[#options].onSelect = vehicleList
             options[#options].args = {
+                component = component,
                 vehicles = allVehicles
             }
         end
