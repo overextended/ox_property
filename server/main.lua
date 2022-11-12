@@ -76,7 +76,7 @@ local function loadResourceDataFiles()
         if existingProperty then
             v.owner = existingProperty.owner
             v.ownerName = existingProperty.ownerName
-            v.permissions = existingProperty.permissions
+            v.permissions = json.decode(existingProperty.permissions)
             v.group = existingProperty.group
             v.groupName = existingProperty.groupName
         else
