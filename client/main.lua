@@ -581,7 +581,7 @@ local function loadProperties(value)
                     local onEnter = function(self)
                         currentZone = self
                         lib.notify({
-                            title = self.propertyLabel,
+                            title = properties[self.property].label,
                             description = self.name,
                             duration = 5000,
                             position = 'top'
