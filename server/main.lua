@@ -92,6 +92,7 @@ local function loadResourceDataFiles()
         for i = 1, #v.components do
             local component = v.components[i]
             component.property = k
+            component.componentId = i
 
             if component.type == 'stash' then
                 local stashName = ('%s:%s'):format(k, i)
