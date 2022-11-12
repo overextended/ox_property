@@ -7,6 +7,20 @@ local menus = {
     contextMenus = {component_menu = true, vehicle_list = true},
     listMenus = {component_menu = true, edit_permissions = true}
 }
+local permissions = {
+    management = {
+        'All access'
+    },
+    parking = {
+        'All access'
+    },
+    stash = {
+        'All access'
+    },
+    wardrobe = {
+        'All access'
+    },
+}
 
 local function getZoneEntities()
     local entities = {}
@@ -511,8 +525,9 @@ local componentActions = {
     end
 }
 
-exports('registerComponentAction', function(componentType, action, subMenus)
+exports('registerComponentAction', function(componentType, action, subMenus, actionPermissions)
     componentActions[componentType] = action
+    permissions[componentType] = actionPermissions
 
     if type(subMenus) == 'table' then
         for menuType, menu in pairs(subMenus) do
