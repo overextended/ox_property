@@ -642,8 +642,8 @@ AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, r
     loadProperties(value)
 end)
 
-local function isPermitted()
-    local property = properties[currentZone.property]
+local function isPermitted(component)
+    local property = properties[component.property]
 
     if player.charid == property.owner then
         return 1
@@ -656,7 +656,7 @@ local function isPermitted()
     if next(property.permissions) then
         for i = 1, #property.permissions do
             local level = property.permissions[i]
-            local access = i == 1 and 1 or level.components[currentZone.componentId]
+            local access = i == 1 and 1 or level.components[component.componentId]
             if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
                 return access
             end
@@ -675,9 +675,9 @@ RegisterCommand('triggerComponent', function()
 
     local component
     local closestPoint = lib.points.closest()
-    if closestPoint and closestPoint.currentDistance < 1 then
+    if closestPoint and closestPoint.currentDistance < 1 and isPermitted(closestPoint) then
         component = closestPoint
-    elseif next(currentZone) and isPermitted() then
+    elseif next(currentZone) and isPermitted(currentZone) then
         component = currentZone
     else
         return
