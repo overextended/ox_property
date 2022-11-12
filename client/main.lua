@@ -1,7 +1,7 @@
 local table = lib.table
 local properties = {}
 local components = {}
-local currentZone = {}
+local currentZone = nil
 local vehicleData = Ox.GetVehicleData()
 local menus = {
     contextMenus = {component_menu = true, vehicle_list = true},
@@ -28,7 +28,7 @@ local function getZoneEntities()
     for i = 1, #peds do
         local ped = peds[i]
         local pedCoords = GetEntityCoords(ped)
-        if currentZone:contains(pedCoords) then
+        if currentZone and currentZone:contains(pedCoords) then
             entities[#entities + 1] = pedCoords
         end
     end
@@ -37,7 +37,7 @@ local function getZoneEntities()
     for i = 1, #vehicles do
         local vehicle = vehicles[i]
         local vehicleCoords = GetEntityCoords(vehicle)
-        if currentZone:contains(vehicleCoords) then
+        if currentZone and currentZone:contains(vehicleCoords) then
             entities[#entities + 1] = vehicleCoords
         end
     end
@@ -604,8 +604,8 @@ local function loadProperties(value)
                     end
 
                     local onExit = function(self)
-                        if currentZone.property == self.property and currentZone.componentId == self.componentId then
-                            currentZone = {}
+                        if currentZone?.property == self.property and currentZone?.componentId == self.componentId then
+                            currentZone = nil
                             if menus.contextMenus[lib.getOpenContextMenu()] then lib.hideContext() end
                             if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() end
                         end
@@ -650,7 +650,7 @@ end
 loadProperties(GlobalState['Properties'])
 
 exports('getCurrentZone', function()
-    return {property = currentZone.property, componentId = currentZone.componentId}
+    return {property = currentZone?.property, componentId = currentZone?.componentId}
 end)
 
 AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, reserved, replicated)
@@ -692,7 +692,7 @@ RegisterCommand('triggerComponent', function()
     local closestPoint = lib.points.closest()
     if closestPoint and closestPoint.currentDistance < 1 and isPermitted(closestPoint) then
         component = closestPoint
-    elseif next(currentZone) and isPermitted(currentZone) then
+    elseif currentZone and isPermitted(currentZone) then
         component = currentZone
     else
         return
@@ -746,7 +746,7 @@ end)
 RegisterKeyMapping('triggerComponent', 'Trigger Component', 'keyboard', 'e')
 
 local function checkCurrentZone(data)
-    if currentZone.property == data.property and currentZone.componentId == data.componentId then return true end
+    if currentZone?.property == data.property and currentZone?.componentId == data.componentId then return true end
 
     lib.notify({title = 'Zone Mismatch', type = 'error'})
     return false
