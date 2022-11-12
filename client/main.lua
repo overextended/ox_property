@@ -590,7 +590,7 @@ local function loadProperties(value)
 
                     local onExit = function(self)
                         if currentZone.property == self.property and currentZone.componentId == self.componentId then
-                            table.wipe(currentZone)
+                            currentZone = {}
                             if menus.contextMenus[lib.getOpenContextMenu()] then lib.hideContext() end
                             if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() end
                         end
