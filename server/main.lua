@@ -82,7 +82,7 @@ local function loadResourceDataFiles()
         else
             v.owner = defaultOwner
             v.ownerName = defaultOwnerName
-            v.permissions = {{groups = {}}}
+            v.permissions = {{}}
             v.group = defaultGroup
             v.groupName = defaultGroupName
 
