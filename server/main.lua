@@ -137,11 +137,12 @@ AddEventHandler('onResourceStart', function(resource)
 end)
 
 lib.callback.register('ox_property:getDisplayData', function(source, data)
+    local component = properties[data.property].components[data.componentId]
+
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
+
     local player = Ox.GetPlayer(source)
-    local zone = properties[data.property].components[data.zoneId]
-
-    if not isPermitted(player, zone, true) then return end
-
     local displayData = {
         groups = MySQL.query.await('SELECT name, label, grades FROM ox_groups'),
         nearbyPlayers = {
@@ -155,121 +156,115 @@ lib.callback.register('ox_property:getDisplayData', function(source, data)
     for i = 1, #displayData.groups do
         local group = displayData.groups[i]
         group.grades = json.decode(group.grades)
-
-        if zone.owner == group.name then
-            displayData.owner = group.label
-        end
     end
 
-    for i = 1, #data.players do
-        local nearbyPlayer = Ox.GetPlayer(GetPlayerServerId(data.players[i].id))
-        displayData.nearbyPlayers[#displayData.nearbyPlayers + 1] = {
-            name = nearbyPlayer.name,
-            charid = nearbyPlayer.charid
-        }
-
-        if not zone.owner and tonumber(zone.owner) == nearbyPlayer.charid then
-            displayData.owner = nearbyPlayer.name
-        end
-    end
-
-    if not displayData.owner then
-        if not zone.owner then
-            displayData.owner = 'None'
-        elseif tonumber(zone.owner) then
-            if tonumber(zone.owner) == player.charid then
-                displayData.owner = player.name
-            else
-                local names = MySQL.single.await('SELECT firstname, lastname FROM characters WHERE charid = ?', {zone.owner})
-                displayData.owner = names and ('%s %s'):format(names.firstname, names.lastname)
-            end
+    local playerPos = player.getCoords()
+    local players = Ox.GetPlayers()
+    for i = 1, #players do
+        local nearbyPlayer = players[i]
+        if nearbyPlayer.source ~= player.source and #(nearbyPlayer.getCoords() - playerPos) < 10 then
+            displayData.nearbyPlayers[#displayData.nearbyPlayers + 1] = {
+                name = nearbyPlayer.name,
+                charid = nearbyPlayer.charid
+            }
         end
     end
 
     return displayData
 end)
 
-RegisterServerEvent('ox_property:updatePermitted', function(data)
-    local player = Ox.GetPlayer(source)
+RegisterServerEvent('ox_property:updatePermissions', function(data)
     local property = properties[data.property]
-    local zone = property.zones[data.zoneId]
+    local component = property.components[data.componentId]
 
-    if not isPermitted(player, zone, true) then return end
-    if not next(data.change) then return end
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
 
-    if data.componentType and data.componentId then
-        local component = property[data.componentType][data.componentId]
+    local player = Ox.GetPlayer(source)
+    local level = property.permissions[data.level] or {
+        components = {},
+        groups = {}
+    }
 
-        if data.change.groups then
-            for k, v in pairs(data.change.groups) do
-                component.groups[k] = tonumber(v) ~= 0 and tonumber(v) or nil
-            end
-
-            MySQL.update('UPDATE ox_property SET groups = ? WHERE property = ? AND type = ? AND id = ?', {json.encode(component.groups), data.property, data.componentType, data.componentId})
-        end
-
-        if data.change.public ~= nil then
-            component.public = data.change.public
-
-            MySQL.update('UPDATE ox_property SET public = ? WHERE property = ? AND type = ? AND id = ?', {component.public, data.property, data.componentType, data.componentId})
-        end
-    else
-        if data.change.owner then
-            zone.owner = data.change.owner
-        end
-
-        if data.change.groups then
-            for k, v in pairs(data.change.groups) do
-                zone.groups[k] = tonumber(v) ~= 0 and tonumber(v) or nil
-            end
-        end
-
-        for i = 1, #property.stashes do
-            property.stashes[i].owner = zone.owner
-            property.stashes[i].groups = zone.groups
-        end
-
-        for i = 1, #property.zones do
-            property.zones[i].owner = zone.owner
-            property.zones[i].groups = zone.groups
-        end
-
-        MySQL.update('UPDATE ox_property SET owner = ?, groups = ? WHERE property = ?', {zone.owner, json.encode(zone.groups), data.property})
+    if data.level == 1 then
+        data.permissions.components = nil
     end
 
+    for k, v in pairs(data.permissions) do
+        if k == 'players' then
+            for key, value in pairs(v) do
+                level[key] = value or nil
+            end
+        elseif k == 'everyone' then
+            level.everyone = v or nil
+        else
+            for key, value in pairs(v) do
+                level[k][key] = value ~= 0 and value or nil
+            end
+        end
+    end
+    property.permissions[data.level] = level
+
+    MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
+
     property.refresh = true
-    properties[data.property] = property
+    properties[property.name] = property
     GlobalState['Properties'] = properties
 
     TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permissions updated', type = 'success'})
 end)
 
-RegisterServerEvent('ox_property:resetPermitted', function(data)
-    local player = Ox.GetPlayer(source)
+RegisterServerEvent('ox_property:deletePermissionLevel', function(data)
     local property = properties[data.property]
-    local zone = property.zones[data.zoneId]
+    local component = property.components[data.componentId]
 
-    if not isPermitted(player, zone, true) then return end
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
 
-    for i = 1, #property.stashes do
-        property.stashes[i].owner = zone.owner
-        property.stashes[i].groups = {}
-        property.stashes[i].public = false
+    local player = Ox.GetPlayer(source)
+    if data.level == 1 then
+        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Action not possible for this permission level', type = 'error'})
+        return
     end
 
-    for i = 1, #property.zones do
-        property.zones[i].owner = zone.owner
-        property.zones[i].groups = {}
-        property.zones[i].public = false
-    end
+    property.permissions[data.level] = nil
 
-    MySQL.update('UPDATE ox_property SET owner = ?, groups = {}, public = false WHERE property = ?', {zone.owner, data.property})
+    MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
 
     property.refresh = true
     properties[data.property] = property
     GlobalState['Properties'] = properties
 
-    TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permissions reset', type = 'success'})
+    TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Level Deleted', type = 'success'})
+end)
+
+RegisterServerEvent('ox_property:setPropertyValue', function(data)
+    print(json.encode(data, {indent=true}))
+    local property = properties[data.property]
+    local component = property.components[data.componentId]
+
+    local permitted = isPermitted(source, component)
+    if not permitted or permitted > 1 then return end
+
+    local player = Ox.GetPlayer(source)
+
+    if data.owner then
+        local owner = data.owner ~= 0 and data.owner or nil
+        MySQL.update('UPDATE ox_property SET owner = ? WHERE name = ?', {owner, property.name})
+
+        property.ownerName = not owner and nil or MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {owner})
+    elseif data.group then
+        local group = data.group ~= 0 and data.group or nil
+        MySQL.update('UPDATE ox_property SET group = ? WHERE name = ?', {group, property.name})
+
+        property.groupName = not group and nil or GlobalState[('group.%s'):format(group)].label
+    end
+
+    property.refresh = true
+    properties[data.property] = property
+    GlobalState['Properties'] = properties
+
+    TriggerClientEvent('ox_lib:notify', player.source, {title = 'Property Value Set', type = 'success'})
 end)
 
 lib.callback.register('ox_property:getVehicleList', function(source, data)

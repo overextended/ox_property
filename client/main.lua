@@ -5,8 +5,15 @@ local currentZone = nil
 local vehicleData = Ox.GetVehicleData()
 local menus = {
     contextMenus = {component_menu = true, vehicle_list = true},
-    listMenus = {component_menu = true, edit_permissions = true}
+    listMenus = {
+        component_menu = true,
+        edit_level = true,
+        set_property_value = true,
+        new_level_access = true,
+        new_level_members = true
+    }
 }
+
 local permissions = {
     management = {
         'All access'
@@ -107,313 +114,305 @@ local function vehicleList(data)
     lib.showContext('vehicle_list')
 end
 
+local permissionData
+local function updatePermissionData(selected, secondary, args)
+    permissionData[args.section] = permissionData[args.section] or {}
+    if args.section == 'players' then
+        permissionData[args.section][args.id] = secondary
+    elseif args.section == 'everyone' then
+        permissionData[args.section] = secondary
+    else
+        permissionData[args.section][args.id] = secondary - 1
+    end
+end
+
+local function onClose(keyPressed)
+    if keyPressed == 'Backspace' then
+        lib.showMenu('component_menu')
+    end
+end
+
 local componentActions = {
     management = function(component)
         local displayData = lib.callback.await('ox_property:getDisplayData', 100, {
-            property = currentZone.property,
-            zoneId = currentZone.zoneId,
-            players = lib.getNearbyPlayers(cache.coords, 10, false)
+            property = component.property,
+            componentId = component.componentId
         })
 
-        local property = properties[currentZone.property]
-        local propertyComponents = {}
-        local stashesList = {}
-        for i = 1, #property.stashes do
-            stashesList[#stashesList + 1] = property.stashes[i].name
-            propertyComponents[#propertyComponents + 1] = property.stashes[i]
+        local property = properties[component.property]
+        local values = {'Edit Access', 'Edit Members', 'Delete Level'}
+        local options = {
+            {
+                label = ('Owner: %s'):format(property.ownerName or 'None'),
+                description = 'Set Property Owner'
+            },
+            {
+                label = ('Group: %s'):format(property.groupName or 'None'),
+                description = 'Set Property Group'
+            }
+        }
+
+        for i = 1, #property.permissions do
+            options[#options + 1] = {
+                label = ('Level %s'):format(i),
+                values = values
+            }
         end
 
-        local zonesList = {}
-        for i = 1, #property.zones do
-            zonesList[#zonesList + 1] = property.zones[i].name
-            propertyComponents[#propertyComponents + 1] = property.zones[i]
-        end
+        options[#options + 1] = {
+            label = 'Create New Level',
+        }
 
         return {
-            options = {
-                {
-                    label = currentZone.property,
-                    description = 'Set permissions for the whole property'
-                },
-                {
-                    label = next(stashesList) and 'Property stashes' or 'No stashes',
-                    values = next(stashesList) and stashesList or nil,
-                    description = 'View and edit stash permissions',
-                    args = {
-                        components = next(property.stashes) and property.stashes or nil
-                    }
-                },
-                {
-                    label = next(zonesList) and 'Property zones' or 'No zones',
-                    values = next(zonesList) and zonesList or nil,
-                    description = 'View and edit zone permissions',
-                    args = {
-                        components = next(property.zones) and property.zones or nil
-                    }
-                },
-            },
+            options = options,
             cb = function(selected, scrollIndex, args)
-                local options = {}
-                if selected == 1 then
-                    local matching = true
-                    if #propertyComponents > 1 then
-                        for i = 1, #propertyComponents do
-                            local component = propertyComponents[i]
-                            if currentZone.owner ~= component.owner or not table.matches(currentZone.groups, component.groups) or currentZone.public ~= component.public then
-                                matching = false
-                                break
-                            end
-                        end
-                    end
+                permissionData = {}
 
-                    options[#options + 1] = {
-                        label = matching and currentZone.property or 'Group permissions do not match',
-                        description = matching and 'Edit all property permissions once' or 'Reset property group permissions',
-                        args = {
-                            matching = matching
-                        }
+                local level = scrollIndex and selected - 2 or #property.permissions + 1
+                local title = values[scrollIndex] or 'New Level'
+
+                if scrollIndex then
+                    local options = {
+                        {label = ('Save Level %s'):format(level)}
                     }
 
-                    options[#options + 1] = {
-                        label = ('Owner: %s'):format(displayData.owner),
-                        description = 'Edit owner',
-                        args = {
-                            editOwner = true
-                        }
-                    }
-
-                    if matching then
-                        options[#options + 1] = {
-                            label = 'Groups',
-                            description = 'Add group',
-                            args = {
-                                addGroup = true
-                            }
-                        }
-
-                        if currentZone.groups then
-                            for k, v in pairs(currentZone.groups) do
-                                local group
-                                for i = 1, #displayData.groups do
-                                    group = displayData.groups[i]
-                                    if group.name == k then
-                                        break
-                                    end
-                                end
-
-                                options[#options + 1] = {
-                                    label = ('%s - %s'):format(group.label, group.grades[v]),
-                                    description = 'Edit group',
-                                    args = {
-                                        group = group,
-                                        editGroup = true
-                                    }
-                                }
-                            end
-                        end
-                    end
-                elseif args.components then
-                    local component = args.components[scrollIndex]
-
-                    options[#options + 1] = {
-                        label = component.name,
-                    }
-
-                    options[#options + 1] = {
-                        label = 'Groups',
-                        description = 'Add group',
-                        args = {
-                            component = component,
-                            addGroup = true
-                        }
-                    }
-
-                    if component.groups then
-                        for k, v in pairs(component.groups) do
-                            local group
-                            for i = 1, #displayData.groups do
-                                group = displayData.groups[i]
-                                if group.name == k then
-                                    break
-                                end
-                            end
+                    if level == 1 and scrollIndex ~= 2 then
+                        lib.notify({title = 'Action not possible for this permission level', type = 'error'})
+                        lib.showMenu('component_menu')
+                        return
+                    elseif scrollIndex == 1 then
+                        for i = 1, #property.components do
+                            local component = property.components[i]
 
                             options[#options + 1] = {
-                                label = ('%s - %s'):format(group.label, group.grades[v]),
-                                description = 'Edit group',
+                                label = component.name,
+                                values = {'None', table.unpack(permissions[component.type])},
+                                defaultIndex = property.permissions[level].components[i] and property.permissions[level].components[i] + 1 or 1,
+                                description = ('Type: %s'):format(component.type:gsub('^%l', string.upper)),
+                                close = false,
                                 args = {
-                                    component = component,
-                                    group = group,
-                                    editGroup = true
+                                    section = 'components',
+                                    id = i
                                 }
                             }
                         end
-                    end
-                else
-                    lib.showMenu('zone_menu')
-                end
-                lib.registerMenu({
-                    id = 'edit_permissions',
-                    title = 'Property Permissions',
-                    options = options,
-                    onClose = function(keyPressed)
-                        if keyPressed == 'Backspace' then
-                            lib.showMenu('zone_menu')
+                    elseif scrollIndex == 2 then
+                        options[#options + 1] = {
+                            label = 'Everyone',
+                            checked = property.permissions[level].everyone or false,
+                            close = false,
+                            args = {section = 'everyone'}
+                        }
+
+                        for i = 1, #displayData.groups do
+                            local group = displayData.groups[i]
+
+                            options[#options + 1] = {
+                                label = group.label,
+                                values = {'None', table.unpack(group.grades)},
+                                defaultIndex = property.permissions[level].groups[group.name] and property.permissions[level].groups[group.name] + 1 or 1,
+                                close = false,
+                                args = {
+                                    section = 'groups',
+                                    id = group.name
+                                }
+                            }
                         end
-                    end
-                },
-                function(selected, scrollIndex, args)
-                    if not args or args.matching then
-                        lib.showMenu('edit_permissions')
-                    elseif args.matching == false then
+
+                        for i = 1, #displayData.nearbyPlayers do
+                            local player = displayData.nearbyPlayers[i]
+
+                            options[#options + 1] = {
+                                label = player.name,
+                                checked = property.permissions[level][player.charid] or false,
+                                close = false,
+                                args = {
+                                    section = 'players',
+                                    id = player.charid
+                                }
+                            }
+                        end
+                    elseif scrollIndex == 3 then
                         local confirm = lib.alertDialog({
-                            header = 'Are You Sure?',
-                            content = 'Continuing will wipe all group permissions for the property, leaving only the owner',
+                            header = 'Please Confirm',
+                            content = 'Are you sure you want to delete this permission level?',
                             centered = true,
                             cancel = true
                         })
 
                         if confirm then
-                            TriggerServerEvent('ox_property:resetPermitted', {
-                                property = currentZone.property,
-                                zoneId = currentZone.zoneId
+                            TriggerServerEvent('ox_property:deletePermissionLevel', {
+                                property = component.property,
+                                componentId = component.componentId,
+                                level = level
                             })
                         end
-                    elseif args.editOwner then
-                        local input = lib.inputDialog(('Transfer Ownership of %s'):format(currentZone.property), {
-                            { type = 'select', label = 'Owner type select', options = {
-                                { value = 'groups', label = 'Group' },
-                                { value = 'nearbyPlayers', label = 'Player' },
-                            }},
-                        })
-                        Wait(100)
-                        if input then
-                            local select = {}
-                            for i = 1, #displayData[input[1]] do
-                                local option = displayData[input[1]][i]
-                                if input[1] == 'groups' then
-                                    select[#select + 1] = {
-                                        value = option.name,
-                                        label = option.label
-                                    }
-                                elseif input[1] == 'nearbyPlayers' then
-                                    select[#select + 1] = {
-                                        value = option.charid,
-                                        label = option.name
-                                    }
-                                end
-                            end
 
-                            local input2 = lib.inputDialog(('Transfer Ownership of %s'):format(currentZone.property), {
-                                {type = 'select', label = 'Owner select', options = select},
+                        return
+                    end
+
+                    lib.registerMenu({
+                        id = 'edit_level',
+                        title = title,
+                        options = options,
+                        onSideScroll = updatePermissionData,
+                        onCheck = updatePermissionData,
+                        onClose = onClose
+                    },
+                    function(selected, scrollIndex, args)
+                        if not scrollIndex then
+                            TriggerServerEvent('ox_property:updatePermissions', {
+                                property = component.property,
+                                componentId = component.componentId,
+                                permissions = permissionData,
+                                level = level
                             })
-                            if input2 then
-                                TriggerServerEvent('ox_property:updatePermitted', {
-                                    property = currentZone.property,
-                                    zoneId = currentZone.zoneId,
-                                    change = {
-                                        owner = input2[1]
-                                    }
-                                })
-                            end
                         end
-                    elseif args.addGroup then
-                        local component = args.component or currentZone
-                        local select = {}
+                    end)
 
+                    lib.showMenu('edit_level')
+                elseif selected == 1 or selected == 2 then
+                    local value
+                    local options = {
+                        {label = 'None'}
+                    }
+
+                    if selected == 1 then
+                        value = 'owner'
+                        for i = 1, #displayData.nearbyPlayers do
+                            local player = displayData.nearbyPlayers[i]
+
+                            options[#options + 1] = {
+                                label = player.name,
+                                args = {
+                                    id = player.charid
+                                }
+                            }
+                        end
+                    elseif selected == 2 then
+                        value = 'group'
                         for i = 1, #displayData.groups do
-                            local option = displayData.groups[i]
-                            if component.groups[option.name] then
-                                select[#select + 1] = {
-                                    value = i,
-                                    label = option.label
+                            local group = displayData.groups[i]
+
+                            options[#options + 1] = {
+                                label = group.label,
+                                args = {
+                                    id = group.name
                                 }
-                            end
-                        end
-
-                        local input = lib.inputDialog('Select Group to Permit', {
-                            { type = 'select', label = 'Group', options = select},
-                        })
-                        Wait(100)
-
-                        if input and next(input) then
-                            local group = displayData.groups[tonumber(input[1])]
-                            local select = {}
-                            for i = 1, #group.grades do
-                                select[#select + 1] = {
-                                    value = i,
-                                    label = group.grades[i]
-                                }
-                            end
-
-                            local input2 = lib.inputDialog('Select Grade and Above to Permit', {
-                                { type = 'select', label = 'Grade', options = select},
-                            })
-
-                            if input2 and next(input2) then
-                                local componentType, componentId
-                                if args.component then
-                                    componentType = component.zoneId and 'zones' or 'stashes'
-                                    componentId = component.zoneId or component.stashId
-                                end
-
-                                TriggerServerEvent('ox_property:updatePermitted', {
-                                    property = currentZone.property,
-                                    zoneId = currentZone.zoneId,
-                                    componentType = componentType,
-                                    componentId = componentId,
-                                    change = {
-                                        groups = {
-                                            [group.name] = input2[1]
-                                        }
-                                    }
-                                })
-                            end
-                        end
-                    elseif args.editGroup then
-                        local component = args.component or currentZone
-                        local select = {
-                            {
-                                value = 0,
-                                label = 'Remove'
                             }
-                        }
-                        for i = 1, #args.group.grades do
-                            select[#select + 1] = {
-                                value = i,
-                                label = args.group.grades[i]
-                            }
-                        end
-
-                        local input = lib.inputDialog('Edit Permitted Grade', {
-                            { type = 'select', label = 'Grade', options = select},
-                        })
-
-                        if input and next(input) then
-                            local componentType, componentId
-                            if args.component then
-                                componentType = component.zoneId and 'zones' or 'stashes'
-                                componentId = component.zoneId or component.stashId
-                            end
-
-                            TriggerServerEvent('ox_property:updatePermitted', {
-                                property = currentZone.property,
-                                zoneId = currentZone.zoneId,
-                                componentType = componentType,
-                                componentId = componentId,
-                                change = {
-                                    groups = {
-                                        [args.group.name] = input[1]
-                                    }
-                                }
-                            })
                         end
                     end
-                end)
 
-                lib.showMenu('edit_permissions')
+                    lib.registerMenu({
+                        id = 'set_property_value',
+                        title = ('Set Property %s'):format(value:gsub('^%l', string.upper)),
+                        options = options,
+                        onClose = onClose
+                    },
+                    function(selected, scrollIndex, args)
+                        TriggerServerEvent('ox_property:setPropertyValue', {
+                            property = component.property,
+                            componentId = component.componentId,
+                            owner = value == 'owner' and (args?.id or 0),
+                            group = value == 'group' and (args?.id or 0)
+                        })
+                    end)
+
+                    lib.showMenu('set_property_value')
+                else
+                    local options = {
+                        {label = ('Continue Level %s'):format(level)}
+                    }
+                    for i = 1, #property.components do
+                        local component = property.components[i]
+
+                        options[#options + 1] = {
+                            label = component.name,
+                            values = {'None', table.unpack(permissions[component.type])},
+                            description = ('Type: %s'):format(component.type:gsub('^%l', string.upper)),
+                            close = false,
+                            args = {
+                                section = 'components',
+                                id = i
+                            }
+                        }
+                    end
+
+                    lib.registerMenu({
+                        id = 'new_level_access',
+                        title = 'Set Access',
+                        options = options,
+                        onSideScroll = updatePermissionData,
+                        onClose = onClose
+                    },
+                    function(selected, scrollIndex, args)
+                        if not scrollIndex then
+                            local options = {
+                                {label = ('Finish Level %s'):format(level)}
+                            }
+
+                            options[#options + 1] = {
+                                label = 'Everyone',
+                                checked = false,
+                                close = false,
+                                args = {section = 'everyone'}
+                            }
+
+                            for i = 1, #displayData.groups do
+                                local group = displayData.groups[i]
+
+                                options[#options + 1] = {
+                                    label = group.label,
+                                    values = {'None', table.unpack(group.grades)},
+                                    close = false,
+                                    args = {
+                                        section = 'groups',
+                                        id = group.name
+                                    }
+                                }
+                            end
+
+                            for i = 1, #displayData.nearbyPlayers do
+                                local player = displayData.nearbyPlayers[i]
+
+                                options[#options + 1] = {
+                                    label = player.name,
+                                    checked = false,
+                                    close = false,
+                                    args = {
+                                        section = 'players',
+                                        id = player.charid
+                                    }
+                                }
+                            end
+
+                            lib.registerMenu({
+                                id = 'new_level_members',
+                                title = 'Set Members',
+                                options = options,
+                                onSideScroll = updatePermissionData,
+                                onCheck = updatePermissionData,
+                                onClose = onClose
+                            },
+                            function(selected, scrollIndex, args)
+                                if not scrollIndex then
+                                    TriggerServerEvent('ox_property:updatePermissions', {
+                                        property = component.property,
+                                        componentId = component.componentId,
+                                        permissions = permissionData,
+                                        level = level
+                                    })
+                                end
+                            end)
+
+                            lib.showMenu('new_level_members')
+                        end
+                    end)
+
+                    lib.showMenu('new_level_access')
+                end
             end
-        }, 'list'
+        }, 'listMenu'
     end,
     parking = function(component)
         local options = {}
