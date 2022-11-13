@@ -169,6 +169,7 @@ local componentActions = {
                 permissionData = {}
 
                 local level = scrollIndex and selected - 2 or #property.permissions + 1
+                local permissionLevel = property.permissions[level]
                 local title = values[scrollIndex] or 'New Level'
 
                 if scrollIndex then
@@ -187,7 +188,7 @@ local componentActions = {
                             options[#options + 1] = {
                                 label = component.name,
                                 values = {'None', table.unpack(permissions[component.type])},
-                                defaultIndex = property.permissions[level].components[i] and property.permissions[level].components[i] + 1 or 1,
+                                defaultIndex = permissionLevel.components[i] and permissionLevel.components[i] + 1 or 1,
                                 description = ('Type: %s'):format(component.type:gsub('^%l', string.upper)),
                                 close = false,
                                 args = {
@@ -199,7 +200,7 @@ local componentActions = {
                     elseif scrollIndex == 2 then
                         options[#options + 1] = {
                             label = 'Everyone',
-                            checked = property.permissions[level].everyone or false,
+                            checked = permissionLevel.everyone or false,
                             close = false,
                             args = {section = 'everyone'}
                         }
@@ -210,7 +211,7 @@ local componentActions = {
                             options[#options + 1] = {
                                 label = group.label,
                                 values = {'None', table.unpack(group.grades)},
-                                defaultIndex = property.permissions[level].groups and property.permissions[level].groups[group.name] and property.permissions[level].groups[group.name] + 1 or 1,
+                                defaultIndex = permissionLevel.groups and permissionLevel.groups[group.name] and permissionLevel.groups[group.name] + 1 or 1,
                                 close = false,
                                 args = {
                                     section = 'groups',
@@ -224,7 +225,7 @@ local componentActions = {
 
                             options[#options + 1] = {
                                 label = player.name,
-                                checked = property.permissions[level][player.charid] or false,
+                                checked = permissionLevel[player.charid] or false,
                                 close = false,
                                 args = {
                                     section = 'players',
