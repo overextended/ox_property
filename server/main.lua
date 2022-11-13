@@ -102,6 +102,7 @@ local function loadResourceDataFiles()
             end
         end
 
+        v.name = k
         properties[k] = v
     end
     GlobalState['Properties'] = properties
