@@ -239,7 +239,6 @@ RegisterServerEvent('ox_property:deletePermissionLevel', function(data)
 end)
 
 RegisterServerEvent('ox_property:setPropertyValue', function(data)
-    print(json.encode(data, {indent=true}))
     local property = properties[data.property]
     local component = property.components[data.componentId]
 
