@@ -55,8 +55,10 @@ local function vehicleList(data)
                 location = 'Current Zone'
             else
                 local propertyName, componentId = string.strsplit(':', vehicle.stored)
-                if properties[propertyName] then
-                    location = ('%s:%s'):format(properties[propertyName].label, componentId)
+                local property = properties[propertyName]
+
+                if property then
+                    location = ('%s:%s'):format(property.label, componentId)
                 end
             end
         end
