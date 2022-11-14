@@ -1,33 +1,5 @@
-local table = lib.table
 local properties = {}
-local components = {}
 local currentZone = nil
-local vehicleData = Ox.GetVehicleData()
-local menus = {
-    contextMenus = {component_menu = true, vehicle_list = true},
-    listMenus = {
-        component_menu = true,
-        edit_level = true,
-        set_property_value = true,
-        new_level_access = true,
-        new_level_members = true
-    }
-}
-
-local permissions = {
-    management = {
-        'All access'
-    },
-    parking = {
-        'All access'
-    },
-    stash = {
-        'All access'
-    },
-    wardrobe = {
-        'All access'
-    },
-}
 
 local function getZoneEntities()
     local entities = {}
@@ -53,6 +25,21 @@ local function getZoneEntities()
 end
 exports('getZoneEntities', getZoneEntities)
 
+local permissions = {
+    management = {
+        'All access'
+    },
+    parking = {
+        'All access'
+    },
+    stash = {
+        'All access'
+    },
+    wardrobe = {
+        'All access'
+    },
+}
+local vehicleData = Ox.GetVehicleData()
 local function vehicleList(data)
     local options = {}
 
@@ -140,19 +127,20 @@ local componentActions = {
         })
 
         local property = properties[component.property]
+        local propertyVariables = GlobalState(('property.%s'):format(property.name))
         local values = {'Edit Access', 'Edit Members', 'Delete Level'}
         local options = {
             {
-                label = ('Owner: %s'):format(property.ownerName or 'None'),
+                label = ('Owner: %s'):format(propertyVariables.ownerName or 'None'),
                 description = 'Set Property Owner'
             },
             {
-                label = ('Group: %s'):format(property.groupName or 'None'),
+                label = ('Group: %s'):format(propertyVariables.groupName or 'None'),
                 description = 'Set Property Group'
             }
         }
 
-        for i = 1, #property.permissions do
+        for i = 1, #propertyVariables.permissions do
             options[#options + 1] = {
                 label = ('Level %s'):format(i),
                 values = values
@@ -168,8 +156,8 @@ local componentActions = {
             cb = function(selected, scrollIndex, args)
                 permissionData = {}
 
-                local level = scrollIndex and selected - 2 or #property.permissions + 1
-                local permissionLevel = property.permissions[level]
+                local level = scrollIndex and selected - 2 or #propertyVariables.permissions + 1
+                local permissionLevel = propertyVariables.permissions[level]
                 local title = values[scrollIndex] or 'New Level'
 
                 if scrollIndex then
@@ -525,6 +513,19 @@ local componentActions = {
     end
 }
 
+local menus = {
+    contextMenus = {
+        component_menu = true,
+        vehicle_list = true
+    },
+    listMenus = {
+        component_menu = true,
+        edit_level = true,
+        set_property_value = true,
+        new_level_access = true,
+        new_level_members = true
+    }
+}
 exports('registerComponentAction', function(componentType, action, subMenus, actionPermissions)
     componentActions[componentType] = action
     permissions[componentType] = actionPermissions
@@ -546,131 +547,159 @@ local function nearbyPoint(point)
     DrawMarker(2, point.coords.x, point.coords.y, point.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.15, 30, 30, 150, 222, false, false, 0, true, false, false, false)
 end
 
-local function loadProperties(value)
-    for k, v in pairs(value) do
-        local create = true
-        if (not properties[k] or v.refresh) and components[k] then
-            if components[k].blip then
-                RemoveBlip(components[k].blip)
+local propertyRegistry = {}
+local componentRegistry = {}
+local function loadProperty(resource, file)
+    local name = file:match('([%w_]+)%..+$')
+    propertyRegistry[resource][#propertyRegistry[resource] + 1] = name
+
+    local func, err = load(LoadResourceFile(resource, file), file, 't')
+    assert(func, err == nil or ('\n^1%s^7'):format(err))
+
+    local data = func()
+    local components = {}
+
+    properties[name] = data
+    properties[name].name = name
+
+    if data.blip and data.sprite then
+        local x, y, z in data.blip
+        local blip = AddBlipForCoord(x, y, z)
+        components.blip = blip
+
+        SetBlipSprite(blip, data.sprite)
+        SetBlipDisplay(blip, 2)
+        SetBlipShrink(blip, true)
+        SetBlipAsShortRange(blip, true)
+
+        AddTextEntry(name, data.label)
+        BeginTextCommandSetBlipName(name)
+        EndTextCommandSetBlipName(blip)
+    end
+
+    for i = 1, #data.components do
+        local component = data.components[i]
+
+        if component.point then
+            components[i] = lib.points.new(component.point, 16, {
+                property = name,
+                componentId = i,
+                type = component.type,
+                name = ('%s:%s'):format(name, i),
+                nearby = nearbyPoint,
+            })
+        else
+            local onEnter = function(self)
+                currentZone = self
+                lib.notify({
+                    title = properties[self.property].label,
+                    description = self.name,
+                    duration = 5000,
+                    position = 'top'
+                })
             end
 
-            for i = 1, #components[k] do
-                components[k][i]:remove()
-            end
-            v.refresh = nil
-        elseif properties[k] then
-            create = false
-        end
-
-        if create then
-            properties[k] = v
-            components[k] = {}
-
-            if v.blip and v.sprite then
-                local x, y, z in v.blip
-                local blip = AddBlipForCoord(x, y, z)
-                components[k].blip = blip
-
-                SetBlipSprite(blip, v.sprite)
-                SetBlipDisplay(blip, 2)
-                SetBlipShrink(blip, true)
-                SetBlipAsShortRange(blip, true)
-
-                AddTextEntry(k, v.label)
-                BeginTextCommandSetBlipName(k)
-                EndTextCommandSetBlipName(blip)
-            end
-
-            for i = 1, #v.components do
-                local component = v.components[i]
-
-                if component.point then
-                    components[k][i] = lib.points.new(component.point, 16, {
-                        property = k,
-                        componentId = i,
-                        type = component.type,
-                        name = ('%s:%s'):format(k, i),
-                        nearby = nearbyPoint,
-                    })
-                else
-                    local onEnter = function(self)
-                        currentZone = self
-                        lib.notify({
-                            title = properties[self.property].label,
-                            description = self.name,
-                            duration = 5000,
-                            position = 'top'
-                        })
-                    end
-
-                    local onExit = function(self)
-                        if currentZone?.property == self.property and currentZone?.componentId == self.componentId then
-                            currentZone = nil
-                            if menus.contextMenus[lib.getOpenContextMenu()] then lib.hideContext() end
-                            if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() end
-                        end
-                    end
-
-                    local zoneData = lib.zones[component.points and 'poly' or component.box and 'box' or component.sphere and 'sphere']({
-                        points = component.points,
-                        thickness = component.thickness,
-                        coords = component.box or component.sphere,
-                        rotation = component.rotation,
-                        size = component.size or vec3(2),
-                        radius = component.radius,
-
-                        onEnter = onEnter,
-                        onExit = onExit,
-
-                        property = k,
-                        componentId = i,
-                        name = component.name,
-                        type = component.type
-                    })
-
-                    components[k][i] = zoneData
-
-                    if component.disableGenerators then
-                        local point1, point2
-                        if component.sphere then
-                            point1, point2 = glm.sphere.maximalContainedAABB(zoneData.coords, zoneData.radius)
-                        else
-                            local verticalOffset = vec(0, 0, zoneData.thickness / 2)
-                            point1, point2 = zoneData.polygon:minimalEnclosingAABB()
-                            point1 -= verticalOffset
-                            point2 += verticalOffset
-                        end
-                        SetAllVehicleGeneratorsActiveInArea(point1.x, point1.y, point1.z, point2.x, point2.y, point2.z, false, false)
-                    end
+            local onExit = function(self)
+                if currentZone?.property == self.property and currentZone?.componentId == self.componentId then
+                    currentZone = nil
+                    if menus.contextMenus[lib.getOpenContextMenu()] then lib.hideContext() end
+                    if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() end
                 end
+            end
+
+            local zoneData = lib.zones[component.points and 'poly' or component.box and 'box' or component.sphere and 'sphere']({
+                points = component.points,
+                thickness = component.thickness,
+                coords = component.box or component.sphere,
+                rotation = component.rotation,
+                size = component.size or vec3(2),
+                radius = component.radius,
+
+                onEnter = onEnter,
+                onExit = onExit,
+
+                property = name,
+                componentId = i,
+                name = component.name,
+                type = component.type
+            })
+
+            components[i] = zoneData
+
+            if component.disableGenerators then
+                local point1, point2
+                if component.sphere then
+                    point1, point2 = glm.sphere.maximalContainedAABB(zoneData.coords, zoneData.radius)
+                else
+                    local verticalOffset = vec(0, 0, zoneData.thickness / 2)
+                    point1, point2 = zoneData.polygon:minimalEnclosingAABB()
+                    point1 -= verticalOffset
+                    point2 += verticalOffset
+                end
+                SetAllVehicleGeneratorsActiveInArea(point1.x, point1.y, point1.z, point2.x, point2.y, point2.z, false, false)
             end
         end
     end
+
+    componentRegistry[name] = components
 end
-loadProperties(GlobalState['Properties'])
+
+AddEventHandler('onResourceStart', function(resource)
+    local count = GetNumResourceMetadata(resource, 'ox_property_data')
+    if count < 1 then return end
+
+    propertyRegistry[resource] = {}
+    for i = 0, count - 1 do
+        loadProperty(resource, GetResourceMetadata(resource, 'ox_property_data', i))
+    end
+end)
+
+local function unloadProperty(name)
+    local propertyComponents = componentRegistry[name]
+
+    if propertyComponents then
+        if propertyComponents.blip then
+            RemoveBlip(propertyComponents.blip)
+        end
+
+        for i = 1, #propertyComponents do
+            propertyComponents[i]:remove()
+        end
+
+        componentRegistry[name] = nil
+    end
+
+    properties[name] = nil
+end
+
+RegisterNetEvent('onResourceStop', function(resource)
+    local resourceProperties = propertyRegistry[resource]
+    if not resourceProperties then return end
+
+    for i = 1, #resourceProperties do
+        unloadProperty(resourceProperties[i])
+    end
+    propertyRegistry[resource] = nil
+end)
 
 exports('getCurrentZone', function()
     return {property = currentZone?.property, componentId = currentZone?.componentId}
 end)
 
-AddStateBagChangeHandler('Properties', 'global', function(bagName, key, value, reserved, replicated)
-    loadProperties(value)
-end)
-
 local function isPermitted(component)
-    local property = properties[component.property]
+    local propertyVariables = GlobalState[('property.%s'):format(component.property)]
 
-    if player.charid == property.owner then
+    if player.charid == propertyVariables.owner then
         return 1
     end
 
-    if property.group and player.getGroup(property.group) == #GlobalState[('group.%s'):format(property.group)].grades then
+    if propertyVariables.group and player.getGroup(propertyVariables.group) == #GlobalState[('group.%s'):format(propertyVariables.group)].grades then
         return 1
     end
 
-    if next(property.permissions) then
-        for i = 1, #property.permissions do
-            local level = property.permissions[i]
+    if next(propertyVariables.permissions) then
+        for i = 1, #propertyVariables.permissions do
+            local level = propertyVariables.permissions[i]
             local access = i == 1 and 1 or level.components[component.componentId]
             if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
                 return access
