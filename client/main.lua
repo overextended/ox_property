@@ -684,9 +684,25 @@ RegisterNetEvent('onResourceStop', function(resource)
     propertyRegistry[resource] = nil
 end)
 
-exports('getCurrentZone', function()
-    return {property = currentZone?.property, componentId = currentZone?.componentId}
-end)
+local function getCurrentComponent()
+    local closestPoint = lib.points.closest()
+    if closestPoint and closestPoint.currentDistance < 1 then
+        return {
+            property = closestPoint.property,
+            componentId = closestPoint.componentId,
+            name = closestPoint.name,
+            type = closestPoint.type
+        }
+    elseif currentZone then
+        return {
+            property = currentZone.property,
+            componentId = currentZone.componentId,
+            name = currentZone.name,
+            type = currentZone.type
+        }
+    end
+end
+exports('getCurrentComponent', getCurrentComponent)
 
 local function isPermitted(component)
     local propertyVariables = GlobalState[('property.%s'):format(component.property)]
@@ -719,22 +735,10 @@ RegisterCommand('triggerComponent', function()
     if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() return end
     if IsPauseMenuActive() or IsNuiFocused() then return end
 
-    local component
-    local closestPoint = lib.points.closest()
-    if closestPoint and closestPoint.currentDistance < 1 and isPermitted(closestPoint) then
-        component = closestPoint
-    elseif currentZone and isPermitted(currentZone) then
-        component = currentZone
-    else
-        return
-    end
+    local component = getCurrentComponent()
+    if not isPermitted(component) then return end
 
-    local data, actionType = componentActions[component.type]({
-        property = component.property,
-        componentId = component.componentId,
-        name = component.name,
-        type = component.type
-    })
+    local data, actionType = componentActions[component.type](component)
 
     if actionType == 'function' then
         data.fun(data.args)
