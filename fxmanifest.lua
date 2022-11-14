@@ -33,3 +33,14 @@ server_scripts {
     'server/main.lua',
 }
 
+files {
+    '/data/**'
+}
+
+ox_property_data '/data/3671_whispymound_drive.lua'
+ox_property_data '/data/7611_goma_street.lua'
+ox_property_data '/data/casa_philips.lua'
+ox_property_data '/data/pillbox_hill_parking.lua'
+ox_property_data '/data/the_clinton_residence.lua'
+ox_property_data '/data/the_crest_residence.lua'
+ox_property_data '/data/the_de_santa_residence.lua'

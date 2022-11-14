@@ -1,10 +1,5 @@
-local defaultOwner = nil
-local defaultOwnerName = nil
-local defaultGroup = nil
-local defaultGroupName = nil
+local propertyResources = {}
 local properties = {}
-local stashes = {}
-local stashHook
 
 local function isPermitted(playerId, component, noError)
     local player = Ox.GetPlayer(playerId)
@@ -35,78 +30,9 @@ local function isPermitted(playerId, component, noError)
 end
 exports('isPermitted', isPermitted)
 
-local function loadResourceDataFiles()
-    local resource = GetInvokingResource() or cache.resource
-    local system = os.getenv('OS')
-    local command = system and system:match('Windows') and 'dir "%s/" /b' or 'ls "%s/"'
-    local path = GetResourcePath(resource)
-    local dir = io.popen(command:format(path:gsub('//', '/') .. '/data'))
-
-    local lines = {}
-    if dir then
-        for line in dir:lines() do
-            lines[#lines + 1] = line:gsub('%.lua', '')
-        end
-        dir:close()
-    end
-
-    local files = {}
-    for i = 1, #lines do
-        local file = lines[i]
-        local func, err = load(LoadResourceFile(resource, ('data/%s.lua'):format(file)), file, 't')
-        assert(func, err == nil or ('\n^1%s^7'):format(err))
-        files[file] = func()
-    end
-
-    defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {defaultOwner})
-    defaultGroupName = defaultGroupName or defaultGroup and MySQL.scalar.await('SELECT label FROM ox_groups WHERE name = ?', {defaultGroup})
-
-    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstname, " ", characters.lastname) AS ownerName, ox_groups.label as ownerLabel FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charid LEFT JOIN ox_groups ON ox_property.group = ox_groups.name')
-
-    local existingProperties = {}
-    for i = 1, #result do
-        local property = result[i]
-        existingProperties[property.name] = property
-    end
-
-    local propertyInsert = {}
-    for k, v in pairs(files) do
-        local existingProperty = existingProperties[k]
-
-        if existingProperty then
-            v.owner = existingProperty.owner
-            v.ownerName = existingProperty.ownerName
-            v.permissions = json.decode(existingProperty.permissions)
-            v.group = existingProperty.group
-            v.groupName = existingProperty.groupName
-        else
-            v.owner = defaultOwner
-            v.ownerName = defaultOwnerName
-            v.permissions = {{}}
-            v.group = defaultGroup
-            v.groupName = defaultGroupName
-
-            propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultGroup}
-        end
-
-        for i = 1, #v.components do
-            local component = v.components[i]
-            component.property = k
-            component.componentId = i
-
-            if component.type == 'stash' then
-                local stashName = ('%s:%s'):format(k, i)
-                stashes[stashName] = true
-
-                exports.ox_inventory:RegisterStash(stashName, ('%s - %s'):format(v.label, component.name), component.slots or 50, component.maxWeight or 50000, not component.shared == true, nil, component.coords)
-            end
-        end
-
-        v.name = k
-        properties[k] = v
-    end
-    GlobalState['Properties'] = properties
-
+local stashes = {}
+local stashHook
+local function resetStashHook()
     local stashesArray = {}
     for stash in pairs(stashes) do
         stashesArray[#stashesArray + 1] = stash
@@ -124,16 +50,89 @@ local function loadResourceDataFiles()
     end, {
         inventoryFilter = stashesArray
     })
+end
+
+local defaultOwner = nil
+local defaultOwnerName
+local defaultGroup = nil
+local defaultGroupName
+AddEventHandler('onResourceStart', function(resource)
+    local count = GetNumResourceMetadata(resource, 'ox_property_data')
+    if count < 1 then return end
+
+    local data = {}
+    for i = 0, count - 1 do
+        local file = GetResourceMetadata(resource, 'ox_property_data', i)
+        local func, err = load(LoadResourceFile(resource, file), file, 't')
+        assert(func, err == nil or ('\n^1%s^7'):format(err))
+        data[file:match('([%w_]+)%..+$')] = func()
+    end
+
+    defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {defaultOwner})
+    defaultGroupName = defaultGroupName or defaultGroup and MySQL.scalar.await('SELECT label FROM ox_groups WHERE name = ?', {defaultGroup})
+
+    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstname, " ", characters.lastname) AS ownerName, ox_groups.label as ownerLabel FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charid LEFT JOIN ox_groups ON ox_property.group = ox_groups.name')
+
+    local existingProperties = {}
+    for i = 1, #result do
+        local property = result[i]
+        existingProperties[property.name] = property
+    end
+
+    local propertyInsert = {}
+    for k, v in pairs(data) do
+        properties[k] = v
+
+        local variables = existingProperties[k]
+        if variables then
+            variables.name = k
+            variables.permissions = json.decode(variables.permissions)
+        else
+            variables = {
+                name = k,
+                permissions = {{}},
+                owner = defaultOwner,
+                ownerName = defaultOwnerName,
+                group = defaultGroup,
+                groupName = defaultGroupName
+            }
+
+            propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultGroup}
+        end
+
+        GlobalState[('property.%s'):format(k)] = variables
+        for key, value in pairs(variables) do
+            v[key] = value
+        end
+
+        for i = 1, #v.components do
+            local component = v.components[i]
+            component.property = k
+            component.componentId = i
+
+            if component.type == 'stash' then
+                local stashName = ('%s:%s'):format(k, i)
+                stashes[stashName] = true
+
+                exports.ox_inventory:RegisterStash(stashName, ('%s - %s'):format(v.label, component.name), component.slots or 50, component.maxWeight or 50000, not component.shared == true, nil, component.coords)
+            end
+        end
+    end
 
     if next(propertyInsert) then
         MySQL.prepare('INSERT INTO ox_property (name, owner, `group`) VALUES (?, ?, ?)', propertyInsert)
     end
-end
-exports('loadDataFiles', loadResourceDataFiles)
 
-AddEventHandler('onResourceStart', function(resource)
-    if resource ~= cache.resource then return end
-    loadResourceDataFiles()
+    resetStashHook()
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if not propertyResources[resource] then return end
+
+    for i = 1, #propertyResources[resource] do
+        properties[propertyResources[resource][i]] = nil
+    end
+    propertyResources[resource] = nil
 end)
 
 lib.callback.register('ox_property:getDisplayData', function(source, data)
@@ -207,9 +206,15 @@ RegisterServerEvent('ox_property:updatePermissions', function(data)
 
     MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
 
-    property.refresh = true
     properties[property.name] = property
-    GlobalState['Properties'] = properties
+    GlobalState[('property.%s'):format(property.name)] = {
+        name = property.name,
+        permissions = property.permissions,
+        owner = property.owner,
+        ownerName = property.ownerName,
+        group = property.group,
+        groupName = property.groupName
+    }
 
     TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permissions updated', type = 'success'})
 end)
@@ -231,9 +236,15 @@ RegisterServerEvent('ox_property:deletePermissionLevel', function(data)
 
     MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
 
-    property.refresh = true
-    properties[data.property] = property
-    GlobalState['Properties'] = properties
+    properties[property.name] = property
+    GlobalState[('property.%s'):format(property.name)] = {
+        name = property.name,
+        permissions = property.permissions,
+        owner = property.owner,
+        ownerName = property.ownerName,
+        group = property.group,
+        groupName = property.groupName
+    }
 
     TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Level Deleted', type = 'success'})
 end)
@@ -261,9 +272,15 @@ RegisterServerEvent('ox_property:setPropertyValue', function(data)
         property.groupName = not group and nil or GlobalState[('group.%s'):format(group)].label
     end
 
-    property.refresh = true
-    properties[data.property] = property
-    GlobalState['Properties'] = properties
+    properties[property.name] = property
+    GlobalState[('property.%s'):format(property.name)] = {
+        name = property.name,
+        permissions = property.permissions,
+        owner = property.owner,
+        ownerName = property.ownerName,
+        group = property.group,
+        groupName = property.groupName
+    }
 
     TriggerClientEvent('ox_lib:notify', player.source, {title = 'Property Value Set', type = 'success'})
 end)
@@ -480,10 +497,10 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
         vehicle.data = json.decode(vehicle.data) or {}
         vehicle.data.display = nil
 
-        MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(component.property, component.componentId), json.encode(vehicle.data), data.plate})
+        MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(property.name, component.componentId), json.encode(vehicle.data), data.plate})
     else
         vehicle.set('display')
-        vehicle.setStored(('%s:%s'):format(component.property, component.componentId), true)
+        vehicle.setStored(('%s:%s'):format(property.name, component.componentId), true)
     end
 
     TriggerClientEvent('ox_lib:notify', player.source, {title = recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
