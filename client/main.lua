@@ -549,6 +549,24 @@ local function nearbyPoint(point)
     DrawMarker(2, point.coords.x, point.coords.y, point.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.15, 30, 30, 150, 222, false, false, 0, true, false, false, false)
 end
 
+local function onEnter(self)
+    currentZone = self
+    lib.notify({
+        title = properties[self.property].label,
+        description = self.name,
+        duration = 5000,
+        position = 'top'
+    })
+end
+
+local function onExit(self)
+    if currentZone?.property == self.property and currentZone?.componentId == self.componentId then
+        currentZone = nil
+        if menus.contextMenus[lib.getOpenContextMenu()] then lib.hideContext() end
+        if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() end
+    end
+end
+
 local propertyRegistry = {}
 local componentRegistry = {}
 local function loadProperty(resource, file)
@@ -591,24 +609,6 @@ local function loadProperty(resource, file)
                 nearby = nearbyPoint,
             })
         else
-            local onEnter = function(self)
-                currentZone = self
-                lib.notify({
-                    title = properties[self.property].label,
-                    description = self.name,
-                    duration = 5000,
-                    position = 'top'
-                })
-            end
-
-            local onExit = function(self)
-                if currentZone?.property == self.property and currentZone?.componentId == self.componentId then
-                    currentZone = nil
-                    if menus.contextMenus[lib.getOpenContextMenu()] then lib.hideContext() end
-                    if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() end
-                end
-            end
-
             local zoneData = lib.zones[component.points and 'poly' or component.box and 'box' or component.sphere and 'sphere']({
                 points = component.points,
                 thickness = component.thickness,
