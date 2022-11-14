@@ -646,7 +646,7 @@ local function loadProperty(resource, file)
     componentRegistry[name] = components
 end
 
-AddEventHandler('onResourceStart', function(resource)
+AddEventHandler('onClientResourceStart', function(resource)
     local count = GetNumResourceMetadata(resource, 'ox_property_data')
     if count < 1 then return end
 
