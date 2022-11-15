@@ -514,35 +514,9 @@ local componentActions = {
         return {options = options}, 'contextMenu'
     end
 }
-
-local menus = {
-    contextMenus = {
-        component_menu = true,
-        vehicle_list = true
-    },
-    listMenus = {
-        component_menu = true,
-        edit_level = true,
-        set_property_value = true,
-        new_level_access = true,
-        new_level_members = true
-    }
-}
-exports('registerComponentAction', function(componentType, action, subMenus, actionPermissions)
+exports('registerComponentAction', function(componentType, action, actionPermissions)
     componentActions[componentType] = action
     permissions[componentType] = actionPermissions
-
-    if type(subMenus) == 'table' then
-        for menuType, menu in pairs(subMenus) do
-            if type(menu) == 'table' then
-                for i = 1, #menu do
-                    menus[menuType][menu[i]] = true
-                end
-            elseif type(menu) == 'string' then
-                menus[menuType][menu] = true
-            end
-        end
-    end
 end)
 
 local function nearbyPoint(point)
@@ -558,6 +532,23 @@ local function onEnter(self)
         position = 'top'
     })
 end
+
+local menus = {
+    contextMenus = {
+        component_menu = true,
+        vehicle_list = true
+    },
+    listMenus = {
+        component_menu = true,
+        edit_level = true,
+        set_property_value = true,
+        new_level_access = true,
+        new_level_members = true
+    }
+}
+exports('registerMenu', function(menu, menuType)
+    menu[('%ss'):format(menuType)] = menu
+end)
 
 local function onExit(self)
     if currentZone?.property == self.property and currentZone?.componentId == self.componentId then
