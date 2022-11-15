@@ -1,10 +1,25 @@
 local propertyResources = {}
 local properties = {}
+local zones = {}
 
 local function isPermitted(playerId, propertyName, componentId, noError)
     local player = Ox.GetPlayer(playerId)
     local property = properties[propertyName]
     local component = property.components[componentId]
+
+    local zone = zones[propertyName][componentId]
+    local coords = player.getCoords()
+    if zone and not zone:contains(coords) then
+        if not noError then
+            TriggerClientEvent('ox_lib:notify', player.source, {title = 'Component Mismatch', type = 'error'})
+        end
+        return false
+    elseif not zone and #(component.point - coords) > 1 then
+        if not noError then
+            TriggerClientEvent('ox_lib:notify', player.source, {title = 'Component Mismatch', type = 'error'})
+        end
+        return false
+    end
 
     if player.charid == property.owner then
         return 1
@@ -106,10 +121,22 @@ AddEventHandler('onResourceStart', function(resource)
             v[key] = value
         end
 
+        zones[k] = {}
         for i = 1, #v.components do
             local component = v.components[i]
             component.property = k
             component.componentId = i
+
+            if not component.point then
+                zones[k][i] = lib.zones[component.points and 'poly' or component.box and 'box' or component.sphere and 'sphere']({
+                    points = component.points,
+                    thickness = component.thickness,
+                    coords = component.box or component.sphere,
+                    rotation = component.rotation,
+                    size = component.size or vec3(2),
+                    radius = component.radius
+                })
+            end
 
             if component.type == 'stash' then
                 local stashName = ('%s:%s'):format(k, i)
