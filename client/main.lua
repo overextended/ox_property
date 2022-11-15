@@ -727,7 +727,7 @@ RegisterCommand('triggerComponent', function()
     if IsPauseMenuActive() or IsNuiFocused() then return end
 
     local component = getCurrentComponent()
-    if not isPermitted(component) then return end
+    if not component or not isPermitted(component) then return end
 
     local data, actionType = componentActions[component.type](component)
 
