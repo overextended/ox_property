@@ -695,8 +695,8 @@ local function getCurrentComponent()
 end
 exports('getCurrentComponent', getCurrentComponent)
 
-local function isPermitted(component)
-    local propertyVariables = GlobalState[('property.%s'):format(component.property)]
+local function isPermitted(property, componentId)
+    local propertyVariables = GlobalState[('property.%s'):format(property)]
 
     if player.charid == propertyVariables.owner then
         return 1
@@ -709,7 +709,7 @@ local function isPermitted(component)
     if next(propertyVariables.permissions) then
         for i = 1, #propertyVariables.permissions do
             local level = propertyVariables.permissions[i]
-            local access = i == 1 and 1 or level.components[component.componentId]
+            local access = i == 1 and 1 or level.components[componentId]
             if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
                 return access
             end
@@ -727,7 +727,7 @@ RegisterCommand('triggerComponent', function()
     if IsPauseMenuActive() or IsNuiFocused() then return end
 
     local component = getCurrentComponent()
-    if not component or not isPermitted(component) then return end
+    if not component or not isPermitted(component.property, component.componentId) then return end
 
     local data, actionType = componentActions[component.type](component)
 
