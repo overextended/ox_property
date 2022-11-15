@@ -1,7 +1,11 @@
 local propertyResources = {}
 local properties = {}
-local zones = {}
 
+exports('getPropertyData', function(property, componentId)
+    return componentId and properties[property].components[componentId] or properties[property]
+end)
+
+local zones = {}
 local function isPermitted(playerId, propertyName, componentId, noError)
     local player = Ox.GetPlayer(playerId)
     local property = properties[propertyName]
