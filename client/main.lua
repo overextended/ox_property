@@ -129,7 +129,7 @@ local componentActions = {
         })
 
         local property = properties[component.property]
-        local propertyVariables = GlobalState(('property.%s'):format(property.name))
+        local propertyVariables = GlobalState[('property.%s'):format(property.name)]
         local values = {'Edit Access', 'Edit Members', 'Delete Level'}
         local options = {
             {
