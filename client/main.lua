@@ -696,6 +696,14 @@ end
 exports('getCurrentComponent', getCurrentComponent)
 
 local function isPermitted(property, componentId)
+    if not property or not componentId then
+        local component = getCurrentComponent()
+        if not component then return false end
+
+        property = component.property
+        componentId = component.componentId
+    end
+
     local propertyVariables = GlobalState[('property.%s'):format(property)]
 
     if player.charid == propertyVariables.owner then
