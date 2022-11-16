@@ -83,7 +83,7 @@ AddEventHandler('onResourceStart', function(resource)
     local data = {}
     for i = 0, count - 1 do
         local file = GetResourceMetadata(resource, 'ox_property_data', i)
-        local func, err = load(LoadResourceFile(resource, file), file, 't')
+        local func, err = load(LoadResourceFile(resource, file), ('@@%s%s'):format(resource, file), 't', Shared.DATA_ENVIRONMENT)
         assert(func, err == nil or ('\n^1%s^7'):format(err))
         data[file:match('([%w_]+)%..+$')] = func()
     end
