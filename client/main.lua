@@ -564,7 +564,7 @@ local function loadProperty(resource, file)
     local name = file:match('([%w_]+)%..+$')
     propertyRegistry[resource][#propertyRegistry[resource] + 1] = name
 
-    local func, err = load(LoadResourceFile(resource, file), file, 't')
+    local func, err = load(LoadResourceFile(resource, file), ('@@%s%s'):format(resource, file), 't', Shared.DATA_ENVIRONMENT)
     assert(func, err == nil or ('\n^1%s^7'):format(err))
 
     local data = func()
