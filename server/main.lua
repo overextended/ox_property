@@ -7,7 +7,7 @@ end)
 
 local zones = {}
 
-local function isPermitted(player, propertyName, componentId, noError)
+local function isPermitted(player, propertyName, componentId)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player
     local property = properties[propertyName]
     local component = property.components[componentId]
@@ -15,15 +15,9 @@ local function isPermitted(player, propertyName, componentId, noError)
     local zone = zones[propertyName][componentId]
     local coords = player.getCoords()
     if zone and not zone:contains(coords) then
-        if not noError then
-            TriggerClientEvent('ox_lib:notify', player.source, {title = 'Component Mismatch', type = 'error'})
-        end
-        return false
+        return false, 'component_mismatch'
     elseif not zone and #(component.point - coords) > 1 then
-        if not noError then
-            TriggerClientEvent('ox_lib:notify', player.source, {title = 'Component Mismatch', type = 'error'})
-        end
-        return false
+        return false, 'component_mismatch'
     end
 
     if player.charid == property.owner then
@@ -44,9 +38,6 @@ local function isPermitted(player, propertyName, componentId, noError)
         end
     end
 
-    if not noError then
-        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Permission Denied', type = 'error'})
-    end
     return false
 end
 exports('isPermitted', isPermitted)
@@ -66,7 +57,7 @@ local function resetStashHook()
 
     stashHook = exports.ox_inventory:registerHook('openInventory', function(payload)
         local property, componentId = string.strsplit(':', payload.inventoryId)
-        if not isPermitted(payload.source, property, tonumber(componentId), true) then
+        if not isPermitted(payload.source, property, tonumber(componentId)) then
             return false
         end
     end, {
@@ -282,10 +273,10 @@ local function setPropertyValue(property, data)
 end
 
 lib.callback.register('ox_property:management', function(source, action, data)
-    local permitted = isPermitted(source, data.property, data.componentId)
+    local permitted, msg = isPermitted(source, data.property, data.componentId)
 
     if not permitted or permitted > 1 then
-        return false, 'not_permitted'
+        return false, msg or 'not_permitted'
     end
 
     if action == 'get_data' then
@@ -479,10 +470,10 @@ end
 
 lib.callback.register('ox_property:parking', function(source, action, data)
     local player = Ox.GetPlayer(source)
-    local permitted = isPermitted(player, data.property, data.componentId)
+    local permitted, msg = isPermitted(source, data.property, data.componentId)
 
     if not permitted or permitted > 1 then
-        return false, 'not_permitted'
+        return false, msg or 'not_permitted'
     end
 
     if action == 'get_vehicles' then
@@ -503,10 +494,10 @@ end)
 local ox_appearance = exports.ox_appearance
 
 lib.callback.register('ox_property:wardrobe', function(source, action, data)
-    local permitted = isPermitted(source, data.property, data.componentId)
+    local permitted, msg = isPermitted(source, data.property, data.componentId)
 
     if not permitted or permitted > 1 then
-        return false, 'not_permitted'
+        return false, msg or 'not_permitted'
     end
 
     if action == 'get_outfits' then
