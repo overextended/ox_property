@@ -617,7 +617,13 @@ local menus = {
 }
 
 exports('registerMenu', function(menu, menuType)
-    menus[menuType][menu] = true
+    if type(menu) == 'string' then
+        menus[menuType][menu] = true
+    elseif type(menu) == 'table' then
+        for i = 1, #menu do
+            menus[menuType][menu[i]] = true
+        end
+    end
 end)
 
 local function onExit(self)
