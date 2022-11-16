@@ -1,6 +1,10 @@
 local properties = {}
 local currentZone = nil
 
+exports('getPropertyData', function(property, componentId)
+    return componentId and properties[property].components[componentId] or properties[property]
+end)
+
 local function getZoneEntities()
     local entities = {}
     local peds = GetGamePool('CPed')
