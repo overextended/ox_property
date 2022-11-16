@@ -286,7 +286,7 @@ RegisterServerEvent('ox_property:setPropertyValue', function(data)
         property.ownerName = owner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {owner}) or nil
     elseif data.group then
         local group = data.group ~= 0 and data.group or nil
-        MySQL.update('UPDATE ox_property SET group = ? WHERE name = ?', {group, property.name})
+        MySQL.update('UPDATE ox_property SET `group` = ? WHERE name = ?', {group, property.name})
 
         property.group = group
         property.groupName = group and GlobalState[('group.%s'):format(group)].label or nil
