@@ -25,7 +25,17 @@ local function getZoneEntities()
 end
 exports('getZoneEntities', getZoneEntities)
 
-local vehicleData = Ox.GetVehicleData()
+local vehicleNames = setmetatable({}, {
+	__index = function(self, index)
+		local data = Ox.GetVehicleData(index)
+
+		if data then
+			self[index] = data.name
+			return data.name
+		end
+	end
+})
+
 local permissions = {
     management = {
         'All access'
@@ -46,7 +56,7 @@ local function vehicleList(data)
 
     for i = 1, #data.vehicles do
         local vehicle = data.vehicles[i]
-        vehicle.data = vehicleData[vehicle.model]
+        vehicle.name = vehicleNames[vehicle.model]
 
         local location = 'Unknown'
         local stored = vehicle.stored and vehicle.stored:find(':')
@@ -66,7 +76,7 @@ local function vehicleList(data)
 
         local action = location == 'Right here' and 'Retrieve' or stored and 'Move' or 'Recover'
 
-        options[('%s - %s'):format(vehicle.data.name, vehicle.plate)] = {
+        options[('%s - %s'):format(vehicle.name, vehicle.plate)] = {
             metadata = {
                 ['Action'] = action,
                 ['Location'] = location

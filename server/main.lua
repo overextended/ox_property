@@ -321,7 +321,22 @@ local function clearVehicleOfPassengers(vehicle)
 end
 exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
 
-local vehicleData = Ox.GetVehicleData()
+local vehicleData = setmetatable({}, {
+	__index = function(self, index)
+		local data = Ox.GetVehicleData(index)
+
+		if data then
+			data = {
+				name = data.name,
+				type = data.type,
+				seats = data.seats,
+			}
+
+			self[index] = data
+			return data
+		end
+	end
+})
 
 local function storeVehicle(player, component, data)
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
