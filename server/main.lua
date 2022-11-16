@@ -510,8 +510,6 @@ lib.callback.register('ox_property:wardrobe', function(source, action, data)
 
         return true, 'outfit_saved'
     elseif action == 'apply_outfit' then
-        TriggerClientEvent('ox_property:applyOutfit', source, ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.componentId), data.slot) or {})
-
-        return true, 'outfit_applied'
+        return true, false, ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.componentId), data.slot)
     end
 end)

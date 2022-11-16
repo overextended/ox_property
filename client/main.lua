@@ -886,7 +886,20 @@ AddEventHandler('ox_property:setOutfit', function(data)
         options = {
             {
                 title = 'Wear',
-                serverEvent = 'ox_property:applyOutfit',
+                onSelect = function(args)
+                    local success, msg, data = lib.callback.await('ox_property:wardrobe', 100, 'apply_outfit', {
+                        property = args.property,
+                        componentId = args.componentId,
+                        slot = args.slot
+                    })
+
+                    if msg then
+                        lib.notify({title = msg, type = success and 'success' or 'error'})
+                    end
+                    if not success or not data then return end
+
+                    TriggerEvent('ox_property:applyOutfit', data)
+                end,
                 args = {
                     property = currentZone.property,
                     componentId = currentZone.componentId,
