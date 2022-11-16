@@ -603,11 +603,11 @@ local function onEnter(self)
 end
 
 local menus = {
-    contextMenus = {
+    contextMenu = {
         component_menu = true,
         vehicle_list = true
     },
-    listMenus = {
+    listMenu = {
         component_menu = true,
         edit_level = true,
         set_property_value = true,
@@ -617,14 +617,14 @@ local menus = {
 }
 
 exports('registerMenu', function(menu, menuType)
-    menu[('%ss'):format(menuType)] = menu
+    menus[menuType][menu] = true
 end)
 
 local function onExit(self)
     if currentZone?.property == self.property and currentZone?.componentId == self.componentId then
         currentZone = nil
-        if menus.contextMenus[lib.getOpenContextMenu()] then lib.hideContext() end
-        if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() end
+        if menus.contextMenu[lib.getOpenContextMenu()] then lib.hideContext() end
+        if menus.listMenu[lib.getOpenMenu()] then lib.hideMenu() end
     end
 end
 
@@ -802,8 +802,8 @@ end
 exports('isPermitted', isPermitted)
 
 RegisterCommand('triggerComponent', function()
-    if menus.contextMenus[lib.getOpenContextMenu()] then lib.hideContext() return end
-    if menus.listMenus[lib.getOpenMenu()] then lib.hideMenu() return end
+    if menus.contextMenu[lib.getOpenContextMenu()] then lib.hideContext() return end
+    if menus.listMenu[lib.getOpenMenu()] then lib.hideMenu() return end
     if IsPauseMenuActive() or IsNuiFocused() then return end
 
     local component = getCurrentComponent()
