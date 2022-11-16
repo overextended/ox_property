@@ -80,12 +80,16 @@ AddEventHandler('onResourceStart', function(resource)
     local count = GetNumResourceMetadata(resource, 'ox_property_data')
     if count < 1 then return end
 
+    propertyResources[resource] = {}
     local data = {}
     for i = 0, count - 1 do
         local file = GetResourceMetadata(resource, 'ox_property_data', i)
         local func, err = load(LoadResourceFile(resource, file), ('@@%s%s'):format(resource, file), 't', Shared.DATA_ENVIRONMENT)
         assert(func, err == nil or ('\n^1%s^7'):format(err))
-        data[file:match('([%w_]+)%..+$')] = func()
+        local propertyName = file:match('([%w_]+)%..+$')
+        data[propertyName] = func()
+
+        propertyResources[resource][#propertyResources[resource] + 1] = propertyName
     end
 
     defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {defaultOwner})
