@@ -6,6 +6,7 @@ exports('getPropertyData', function(property, componentId)
 end)
 
 local zones = {}
+
 local function isPermitted(player, propertyName, componentId, noError)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player
     local property = properties[propertyName]
@@ -52,6 +53,7 @@ exports('isPermitted', isPermitted)
 
 local stashes = {}
 local stashHook
+
 local function resetStashHook()
     local stashesArray = {}
     for stash in pairs(stashes) do
@@ -76,6 +78,7 @@ local defaultOwner = nil
 local defaultOwnerName
 local defaultGroup = nil
 local defaultGroupName
+
 AddEventHandler('onResourceStart', function(resource)
     local count = GetNumResourceMetadata(resource, 'ox_property_data')
     if count < 1 then return end
@@ -496,6 +499,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
 end)
 
 local ox_appearance = exports.ox_appearance
+
 lib.callback.register('ox_property:wardrobe', function(source, action, data)
     local permitted = isPermitted(source, data.property, data.componentId)
 

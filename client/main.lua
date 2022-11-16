@@ -25,6 +25,7 @@ local function getZoneEntities()
 end
 exports('getZoneEntities', getZoneEntities)
 
+local vehicleData = Ox.GetVehicleData()
 local permissions = {
     management = {
         'All access'
@@ -39,7 +40,7 @@ local permissions = {
         'All access'
     },
 }
-local vehicleData = Ox.GetVehicleData()
+
 local function vehicleList(data)
     local options = {}
 
@@ -112,6 +113,7 @@ local function vehicleList(data)
 end
 
 local permissionData
+
 local function updatePermissionData(selected, secondary, args)
     permissionData[args.section] = permissionData[args.section] or {}
     if args.section == 'players' then
@@ -566,6 +568,7 @@ local componentActions = {
         return {options = options}, 'contextMenu'
     end
 }
+
 exports('registerComponentAction', function(componentType, action, actionPermissions)
     componentActions[componentType] = action
     permissions[componentType] = actionPermissions
@@ -598,6 +601,7 @@ local menus = {
         new_level_members = true
     }
 }
+
 exports('registerMenu', function(menu, menuType)
     menu[('%ss'):format(menuType)] = menu
 end)
@@ -612,6 +616,7 @@ end
 
 local propertyRegistry = {}
 local componentRegistry = {}
+
 local function loadProperty(resource, file)
     local name = file:match('([%w_]+)%..+$')
     propertyRegistry[resource][#propertyRegistry[resource] + 1] = name
