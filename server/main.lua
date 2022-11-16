@@ -211,6 +211,7 @@ RegisterServerEvent('ox_property:updatePermissions', function(data)
         components = {},
         groups = {}
     }
+    local level = property.permissions[data.level] or {}
 
     if data.level == 1 then
         data.permissions.components = nil
@@ -225,6 +226,7 @@ RegisterServerEvent('ox_property:updatePermissions', function(data)
             level.everyone = v or nil
         else
             for key, value in pairs(v) do
+                level[k] = level[k] or {}
                 level[k][key] = value ~= 0 and value or nil
             end
         end
