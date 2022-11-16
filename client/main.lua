@@ -516,7 +516,7 @@ local componentActions = {
         return {options = options}, 'contextMenu'
     end,
     stash = function(component)
-        return {fun = function() exports.ox_inventory:openInventory('stash', component.name) end}, 'function'
+        exports.ox_inventory:openInventory('stash', component.name)
     end,
     wardrobe = function(component)
         local options = {}
@@ -806,11 +806,9 @@ RegisterCommand('triggerComponent', function()
     if not component or not isPermitted(component.property, component.componentId) then return end
 
     local data, actionType = componentActions[component.type](component)
-    if not data then return end
+    if not data or not actionType then return end
 
-    if actionType == 'function' then
-        data.fun(data.args)
-    elseif actionType == 'event' then
+    if actionType == 'event' then
         TriggerEvent(data.event, data.args)
     elseif actionType == 'serverEvent' then
         TriggerServerEvent(data.serverEvent, data.args)
