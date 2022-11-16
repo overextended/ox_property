@@ -51,8 +51,8 @@ local function vehicleList(data)
         local stored = vehicle.stored and vehicle.stored:find(':')
 
         if stored then
-            if vehicle.stored == ('%s:%s'):format(data.component.property, data.component.componentId) then
-                location = 'Current Zone'
+            if data.componentOnly or vehicle.currentComponent then
+                location = 'Right here'
             else
                 local propertyName, componentId = string.strsplit(':', vehicle.stored)
                 local property = properties[propertyName]
@@ -63,7 +63,7 @@ local function vehicleList(data)
             end
         end
 
-        local action = location == 'Current Zone' and 'Retrieve' or stored and 'Move' or 'Recover'
+        local action = location == 'Right here' and 'Retrieve' or stored and 'Move' or 'Recover'
 
         options[('%s - %s'):format(vehicle.data.name, vehicle.plate)] = {
             metadata = {
@@ -72,18 +72,26 @@ local function vehicleList(data)
             },
             onSelect = function(args)
                 if args.action == 'Retrieve' then
-                    TriggerServerEvent('ox_property:retrieveVehicle', {
+                    local success, msg = lib.callback.await('ox_property:parking', 100, 'retrieve_vehicle', {
                         property = data.component.property,
                         componentId = data.component.componentId,
                         plate = args.plate,
                         entities = getZoneEntities()
                     })
+
+                    if msg then
+                        lib.notify({title = msg, type = success and 'success' or 'error'})
+                    end
                 else
-                    TriggerServerEvent('ox_property:moveVehicle', {
+                    local success, msg = lib.callback.await('ox_property:parking', 100, 'move_vehicle', {
                         property = data.component.property,
                         componentId = data.component.componentId,
                         plate = args.plate
                     })
+
+                    if msg then
+                        lib.notify({title = msg, type = success and 'success' or 'error'})
+                    end
                 end
             end,
             args = {
@@ -95,7 +103,7 @@ local function vehicleList(data)
 
     lib.registerContext({
         id = 'vehicle_list',
-        title = data.zoneOnly and ('%s - %s - Vehicles'):format(properties[data.component.property].label, data.component.name) or 'All Vehicles',
+        title = data.componentOnly and ('%s - %s - Vehicles'):format(properties[data.component.property].label, data.component.name) or 'All Vehicles',
         menu = 'component_menu',
         options = options
     })
@@ -123,10 +131,15 @@ end
 
 local componentActions = {
     management = function(component)
-        local displayData = lib.callback.await('ox_property:getDisplayData', 100, {
+        local success, msg, displayData = lib.callback.await('ox_property:management', 100, 'get_data', {
             property = component.property,
             componentId = component.componentId
         })
+
+        if msg then
+            lib.notify({title = msg, type = success and 'success' or 'error'})
+        end
+        if not success or not displayData then return end
 
         local property = properties[component.property]
         local propertyVariables = GlobalState[('property.%s'):format(property.name)]
@@ -232,11 +245,15 @@ local componentActions = {
                         })
 
                         if confirm then
-                            TriggerServerEvent('ox_property:deletePermissionLevel', {
+                            local success, msg = lib.callback.await('ox_property:management', 100, 'delete_permission', {
                                 property = component.property,
                                 componentId = component.componentId,
                                 level = level
                             })
+
+                            if msg then
+                                lib.notify({title = msg, type = success and 'success' or 'error'})
+                            end
                         end
 
                         return
@@ -252,12 +269,16 @@ local componentActions = {
                     },
                     function(selected, scrollIndex, args)
                         if not scrollIndex then
-                            TriggerServerEvent('ox_property:updatePermissions', {
+                            local success, msg = lib.callback.await('ox_property:management', 100, 'update_permission', {
                                 property = component.property,
                                 componentId = component.componentId,
                                 permissions = permissionData,
                                 level = level
                             })
+
+                            if msg then
+                                lib.notify({title = msg, type = success and 'success' or 'error'})
+                            end
                         end
                     end)
 
@@ -301,13 +322,17 @@ local componentActions = {
                         onClose = onClose
                     },
                     function(selected, scrollIndex, args)
-                        TriggerServerEvent('ox_property:setPropertyValue', {
+                        local success, msg = lib.callback.await('ox_property:management', 100, 'set_value', {
                             property = component.property,
                             componentId = component.componentId,
                             owner = value == 'owner' and (args?.id or 0),
                             group = value == 'group' and (args?.id or 0)
                         })
-                    end)
+
+                        if msg then
+                            lib.notify({title = msg, type = success and 'success' or 'error'})
+                        end
+                end)
 
                     lib.showMenu('set_property_value')
                 else
@@ -387,12 +412,16 @@ local componentActions = {
                             },
                             function(selected, scrollIndex, args)
                                 if not scrollIndex then
-                                    TriggerServerEvent('ox_property:updatePermissions', {
+                                    local success, msg = lib.callback.await('ox_property:management', 100, 'update_permission', {
                                         property = component.property,
                                         componentId = component.componentId,
                                         permissions = permissionData,
                                         level = level
                                     })
+
+                                    if msg then
+                                        lib.notify({title = msg, type = success and 'success' or 'error'})
+                                    end
                                 end
                             end)
 
@@ -407,54 +436,70 @@ local componentActions = {
     end,
     parking = function(component)
         local options = {}
-        local allVehicles, zoneVehicles = lib.callback.await('ox_property:getVehicleList', 100, {
+        local success, msg, vehicles = lib.callback.await('ox_property:parking', 100, 'get_vehicles', {
             property = component.property,
             componentId = component.componentId
         })
+
+        if msg then
+            lib.notify({title = msg, type = success and 'success' or 'error'})
+        end
+        if not success or not vehicles then return end
 
         if cache.seat == -1 then
             options[#options + 1] = {
                 title = 'Store Vehicle',
                 onSelect = function()
                     if cache.seat == -1 then
-                        TriggerServerEvent('ox_property:storeVehicle', {
+                        local success, msg = lib.callback.await('ox_property:parking', 100, 'store_vehicle', {
                             property = component.property,
                             componentId = component.componentId,
                             properties = lib.getVehicleProperties(cache.vehicle)
                         })
+
+                        if msg then
+                            lib.notify({title = msg, type = success and 'success' or 'error'})
+                        end
                     else
                         lib.notify({title = "You are not in the driver's seat", type = 'error'})
                     end
                 end
             }
         end
-
-        if zoneVehicles and next(zoneVehicles) then
-            options[#options + 1] = {
-                title = 'Open Location',
-                description = 'View your vehicles at this location',
-                metadata = {['Vehicles'] = #zoneVehicles},
-                onSelect = vehicleList,
-                args = {
-                    component = component,
-                    vehicles = zoneVehicles,
-                    zoneOnly = true
-                }
-            }
+        print(1)
+        local len = #vehicles
+        local componentVehicles = {}
+        local currentComponent = ('%s:%s'):format(component.property, component.componentId)
+        for i = 1, len do
+            local vehicle = vehicles[i]
+            if vehicle.stored == currentComponent then
+                componentVehicles[#componentVehicles + 1] = vehicle
+                vehicle.currentComponent = true
+            end
         end
+
+        options[#options + 1] = {
+            title = 'Open Location',
+            description = 'View your vehicles at this location',
+            metadata = {['Vehicles'] = #componentVehicles},
+            onSelect = #componentVehicles > 0 and vehicleList,
+            args = {
+                component = component,
+                vehicles = componentVehicles,
+                componentOnly = true
+            }
+        }
 
         options[#options + 1] = {
             title = 'All Vehicles',
             description = 'View all your vehicles',
-            metadata = {['Vehicles'] = #allVehicles}
-        }
-        if #allVehicles > 0 then
-            options[#options].onSelect = vehicleList
-            options[#options].args = {
+            metadata = {['Vehicles'] = len},
+            onSelect = len > 0 and vehicleList,
+            args = {
                 component = component,
-                vehicles = allVehicles
+                vehicles = vehicles
             }
-        end
+        }
 
         return {options = options}, 'contextMenu'
     end,
@@ -463,10 +508,17 @@ local componentActions = {
     end,
     wardrobe = function(component)
         local options = {}
-        local personalOutfits, zoneOutfits = lib.callback.await('ox_property:getOutfits', 100, {
+        local success, msg, data = lib.callback.await('ox_property:wardrobe', 100, 'get_outfits', {
             property = component.property,
             componentId = component.componentId
         })
+
+        if msg then
+            lib.notify({title = msg, type = success and 'success' or 'error'})
+        end
+        if not success or not data then return end
+
+        local personalOutfits, componentOutfits in data
 
         if component.outfits then
             options[#options + 1] = {
@@ -475,7 +527,7 @@ local componentActions = {
                 args = {
                     property = component.property,
                     componentId = component.componentId,
-                    outfitNames = zoneOutfits,
+                    outfitNames = componentOutfits or {},
                     zoneOutfits = true
                 }
             }
@@ -489,7 +541,7 @@ local componentActions = {
                     componentId = component.componentId,
                     slot = 'new',
                     name = '',
-                    outfitNames = zoneOutfits
+                    outfitNames = componentOutfits or {}
                 }
             }
         end
@@ -500,7 +552,7 @@ local componentActions = {
             args = {
                 property = component.property,
                 componentId = component.componentId,
-                outfitNames = personalOutfits
+                outfitNames = personalOutfits or {}
             }
         }
 
@@ -739,6 +791,7 @@ RegisterCommand('triggerComponent', function()
     if not component or not isPermitted(component.property, component.componentId) then return end
 
     local data, actionType = componentActions[component.type](component)
+    if not data then return end
 
     if actionType == 'function' then
         data.fun(data.args)

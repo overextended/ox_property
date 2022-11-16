@@ -167,12 +167,8 @@ AddEventHandler('onResourceStop', function(resource)
     propertyResources[resource] = nil
 end)
 
-lib.callback.register('ox_property:getDisplayData', function(source, data)
-    local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
-
-    local player = Ox.GetPlayer(source)
-    local displayData = {
+local function getManagementData(player)
+    local data = {
         groups = MySQL.query.await('SELECT name, label, grades FROM ox_groups'),
         nearbyPlayers = {
             {
@@ -182,8 +178,8 @@ lib.callback.register('ox_property:getDisplayData', function(source, data)
         }
     }
 
-    for i = 1, #displayData.groups do
-        local group = displayData.groups[i]
+    for i = 1, #data.groups do
+        local group = data.groups[i]
         group.grades = json.decode(group.grades)
     end
 
@@ -192,25 +188,29 @@ lib.callback.register('ox_property:getDisplayData', function(source, data)
     for i = 1, #players do
         local nearbyPlayer = players[i]
         if nearbyPlayer.source ~= player.source and #(nearbyPlayer.getCoords() - playerPos) < 10 then
-            displayData.nearbyPlayers[#displayData.nearbyPlayers + 1] = {
+            data.nearbyPlayers[#data.nearbyPlayers + 1] = {
                 name = nearbyPlayer.name,
                 charid = nearbyPlayer.charid
             }
         end
     end
 
-    return displayData
-end)
+    return true, false, data
+end
 
-RegisterServerEvent('ox_property:updatePermissions', function(data)
-    local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
-
-    local property = properties[data.property]
-    local level = property.permissions[data.level] or {
-        components = {},
-        groups = {}
+local function updateProperty(property)
+    properties[property.name] = property
+    GlobalState[('property.%s'):format(property.name)] = {
+        name = property.name,
+        permissions = property.permissions,
+        owner = property.owner,
+        ownerName = property.ownerName,
+        group = property.group,
+        groupName = property.groupName
     }
+end
+
+local function updatePermissionLevel(property, data)
     local level = property.permissions[data.level] or {}
 
     if data.level == 1 then
@@ -235,51 +235,26 @@ RegisterServerEvent('ox_property:updatePermissions', function(data)
 
     MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
 
-    properties[property.name] = property
-    GlobalState[('property.%s'):format(property.name)] = {
-        name = property.name,
-        permissions = property.permissions,
-        owner = property.owner,
-        ownerName = property.ownerName,
-        group = property.group,
-        groupName = property.groupName
-    }
+    updateProperty(property)
 
-    TriggerClientEvent('ox_lib:notify', source, {title = 'Permissions updated', type = 'success'})
-end)
+    return true, 'permission_level_updated'
+end
 
-RegisterServerEvent('ox_property:deletePermissionLevel', function(data)
-    local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
-
-    local property = properties[data.property]
-    if data.level == 1 then
-        TriggerClientEvent('ox_lib:notify', source, {title = 'Action not possible for this permission level', type = 'error'})
-        return
+local function deletePermissionLevel(property, level)
+    if level == 1 then
+        return false, 'action_not_allowed'
     end
 
-    property.permissions[data.level] = nil
+    property.permissions[level] = nil
 
     MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
 
-    properties[property.name] = property
-    GlobalState[('property.%s'):format(property.name)] = {
-        name = property.name,
-        permissions = property.permissions,
-        owner = property.owner,
-        ownerName = property.ownerName,
-        group = property.group,
-        groupName = property.groupName
-    }
+    updateProperty(property)
 
-    TriggerClientEvent('ox_lib:notify', source, {title = 'Permission Level Deleted', type = 'success'})
-end)
+    return true, 'permission_level_deleted'
+end
 
-RegisterServerEvent('ox_property:setPropertyValue', function(data)
-    local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
-
-    local property = properties[data.property]
+local function setPropertyValue(property, data)
     if data.owner then
         local owner = data.owner ~= 0 and data.owner or nil
         MySQL.update('UPDATE ox_property SET owner = ? WHERE name = ?', {owner, property.name})
@@ -294,40 +269,30 @@ RegisterServerEvent('ox_property:setPropertyValue', function(data)
         property.groupName = group and GlobalState[('group.%s'):format(group)].label or nil
     end
 
-    properties[property.name] = property
-    GlobalState[('property.%s'):format(property.name)] = {
-        name = property.name,
-        permissions = property.permissions,
-        owner = property.owner,
-        ownerName = property.ownerName,
-        group = property.group,
-        groupName = property.groupName
-    }
+    updateProperty(property)
 
-    TriggerClientEvent('ox_lib:notify', source, {title = 'Property Value Set', type = 'success'})
-end)
+    return true, 'property_value_set'
+end
 
-lib.callback.register('ox_property:getVehicleList', function(source, data)
+lib.callback.register('ox_property:management', function(source, action, data)
     local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
 
-    local player = Ox.GetPlayer(source)
-    local component = properties[data.property].components[data.componentId]
-    local vehicles = data.propertyOnly and MySQL.query.await('SELECT * FROM vehicles WHERE stored LIKE ? AND owner = ?', {('%s%%'):format(component.property), player.charid}) or MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid})
-
-    local vehicleModels = {}
-    local zoneVehicles = {}
-    local componentIdentifier = ('%s:%s'):format(component.property, component.componentId)
-    for i = 1, #vehicles do
-        local vehicle = vehicles[i]
-        vehicleModels[#vehicleModels + 1] = vehicle.model
-
-        if vehicle.stored == componentIdentifier then
-            zoneVehicles[#zoneVehicles + 1] = vehicle
-        end
+    if not permitted or permitted > 1 then
+        return false, 'not_permitted'
     end
 
-    return vehicles, zoneVehicles
+    if action == 'get_data' then
+        return getManagementData(Ox.GetPlayer(source))
+    end
+
+    local property = properties[data.property]
+    if action == 'update_permission' then
+        return updatePermissionLevel(property, data)
+    elseif action == 'delete_permission' then
+        return deletePermissionLevel(property, data.level)
+    elseif action == 'set_value' then
+        return setPropertyValue(property, data)
+    end
 end)
 
 local function clearVehicleOfPassengers(vehicle)
@@ -358,33 +323,27 @@ local function clearVehicleOfPassengers(vehicle)
 end
 exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
 
-RegisterServerEvent('ox_property:storeVehicle', function(data)
-    local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
-
-    local player = Ox.GetPlayer(source)
-    local component = properties[data.property].components[data.componentId]
-    local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(GetPlayerPed(player.source), false))
+local function storeVehicle(player, component, data)
+    local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
     if not vehicle then
-        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to store', type = 'error'})
-        return
+        return false, 'vehicle_store_failed'
     end
 
     vehicle.data = Ox.GetVehicleData(vehicle.model)
-
-    if player.charid == vehicle.owner and component.vehicles[vehicle.data.type] then
-        clearVehicleOfPassengers(vehicle)
-
-        vehicle.set('properties', data.properties)
-        vehicle.set('display')
-        vehicle.setStored(('%s:%s'):format(component.property, component.componentId), true)
-
-        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle stored', type = 'success'})
-        TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'store')
-    else
-        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to store', type = 'error'})
+    if player.charid ~= vehicle.owner or not component.vehicles[vehicle.data.type] then
+        return false, 'vehicle_store_failed'
     end
-end)
+
+    clearVehicleOfPassengers(vehicle)
+
+    vehicle.set('properties', data.properties)
+    vehicle.set('display')
+    vehicle.setStored(('%s:%s'):format(component.property, component.componentId), true)
+
+    TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'store')
+
+    return true, 'vehicle_stored'
+end
 
 local function isPointClear(point, entities)
     for i = 1, #entities do
@@ -416,35 +375,25 @@ local function findClearSpawn(spawns, entities)
 end
 exports('findClearSpawn', findClearSpawn)
 
-RegisterServerEvent('ox_property:retrieveVehicle', function(data)
-    local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
-
-    local player = Ox.GetPlayer(source)
-    local component = properties[data.property].components[data.componentId]
+local function retrieveVehicle(player, component, data)
     local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
     if not vehicle or vehicle.stored ~= ('%s:%s'):format(component.property, component.componentId) then
-        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle is not stored', type = 'error'})
-        return
+        return false, 'vehicle_retrieve_failed'
     end
 
     local spawn = findClearSpawn(component.spawns, data.entities)
-
-    if spawn and component.vehicles[Ox.GetVehicleData(vehicle.model).type] then
-        Ox.CreateVehicle(vehicle.id, spawn.coords, spawn.heading)
-
-        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle retrieved', type = 'success'})
-        TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'retrieve')
-    else
-        TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to retrieve', type = 'error'})
+    if not spawn or not component.vehicles[Ox.GetVehicleData(vehicle.model).type] then
+        return false, 'vehicle_retrieve_failed'
     end
-end)
 
-RegisterServerEvent('ox_property:moveVehicle', function(data)
-    local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
+    Ox.CreateVehicle(vehicle.id, spawn.coords, spawn.heading)
 
-    local player = Ox.GetPlayer(source)
+    TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'retrieve')
+
+    return true, 'vehicle_retrieved'
+end
+
+local function moveVehicle(player, property, component, data)
     local vehicles = Ox.GetVehicles(true)
     local vehicle, recover, db
 
@@ -454,8 +403,7 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
             local seats = Ox.GetVehicleData(veh.model).seats
             for j = -1, seats - 1 do
                 if GetPedInVehicleSeat(veh.entity, j) ~= 0 then
-                    TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle failed to recover', type = 'error'})
-                    return
+                    return false, 'vehicle_recover_failed'
                 end
             end
 
@@ -469,20 +417,16 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
         vehicle = MySQL.single.await('SELECT model, data, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 
         if not vehicle then
-            TriggerClientEvent('ox_lib:notify', player.source, {title = 'Vehicle not found', type = 'error'})
-            return
+            return false, 'vehicle_not_found'
         end
 
         recover = not vehicle.stored or not vehicle.stored:find(':')
         db = true
     end
 
-    local property = properties[data.property]
-    local component = property.components[data.componentId]
     local vehicleData = Ox.GetVehicleData(vehicle.model)
     if not vehicleData or not component.vehicles[vehicleData.type] then
-        TriggerClientEvent('ox_lib:notify', player.source, {title = recover and 'Vehicle failed to recover' or 'Vehicle failed to move', type = 'error'})
-        return
+        return false, recover and 'vehicle_recover_failed' or 'vehicle_move_failed'
     end
 
     if property.owner ~= player.charid and (property.owner or property.group)then
@@ -519,29 +463,54 @@ RegisterServerEvent('ox_property:moveVehicle', function(data)
         vehicle.setStored(('%s:%s'):format(property.name, component.componentId), true)
     end
 
-    TriggerClientEvent('ox_lib:notify', player.source, {title = recover and 'Vehicle recovered' or 'Vehicle moved', type = 'success'})
     TriggerEvent('ox_property:vehicleStateChange', data.plate, recover and 'recover' or 'move')
+
+    return true, recover and 'vehicle_recovered' or 'vehicle_moved'
+end
+
+lib.callback.register('ox_property:parking', function(source, action, data)
+    local permitted = isPermitted(source, data.property, data.componentId)
+
+    if not permitted or permitted > 1 then
+        return false, 'not_permitted'
+    end
+
+    local player = Ox.GetPlayer(source)
+    if action == 'get_vehicles' then
+        return true, false, MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid})
+    end
+
+    local property = properties[data.property]
+    local component = property.components[data.componentId]
+    if action == 'store_vehicle' then
+        return storeVehicle(player, component, data)
+    elseif action == 'retrieve_vehicle' then
+        return retrieveVehicle(player, component, data)
+    elseif action == 'move_vehicle' then
+        return moveVehicle(player, property, component, data)
+    end
 end)
 
 local ox_appearance = exports.ox_appearance
-lib.callback.register('ox_property:getOutfits', function(source, data)
+lib.callback.register('ox_property:wardrobe', function(source, action, data)
     local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
 
-    local player = Ox.GetPlayer(source)
-    return ox_appearance:outfitNames(player.charid) or {}, ox_appearance:outfitNames(('%s:%s'):format(data.property, data.componentId)) or {}
-end)
+    if not permitted or permitted > 1 then
+        return false, 'not_permitted'
+    end
 
-RegisterNetEvent('ox_property:saveOutfit', function(data, appearance)
-    local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
+    if action == 'get_outfits' then
+        return true, false, {
+            personalOutfits = ox_appearance:outfitNames(Ox.GetPlayer(source).charid),
+            componentOutfits = ox_appearance:outfitNames(('%s:%s'):format(data.property, data.componentId))
+        }
+    elseif action == 'save_outfit' then
+        ox_appearance:saveOutfit(('%s:%s'):format(data.property, data.componentId), data.appearance, data.slot, data.outfitNames)
 
-    ox_appearance:saveOutfit(('%s:%s'):format(data.property, data.componentId), appearance, data.slot, data.outfitNames)
-end)
+        return true, 'outfit_saved'
+    elseif action == 'apply_outfit' then
+        TriggerClientEvent('ox_property:applyOutfit', source, ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.componentId), data.slot) or {})
 
-RegisterNetEvent('ox_property:applyOutfit', function(data)
-    local permitted = isPermitted(source, data.property, data.componentId)
-    if not permitted or permitted > 1 then return end
-
-    TriggerClientEvent('ox_property:applyOutfit', source, ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.componentId), data.slot) or {})
+        return true, 'outfit_applied'
+    end
 end)
