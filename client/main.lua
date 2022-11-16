@@ -468,7 +468,7 @@ local componentActions = {
                 end
             }
         end
-        print(1)
+
         local len = #vehicles
         local componentVehicles = {}
         local currentComponent = ('%s:%s'):format(component.property, component.componentId)
