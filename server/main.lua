@@ -6,8 +6,8 @@ exports('getPropertyData', function(property, componentId)
 end)
 
 local zones = {}
-local function isPermitted(playerId, propertyName, componentId, noError)
-    local player = Ox.GetPlayer(playerId)
+local function isPermitted(player, propertyName, componentId, noError)
+    player = type(player) == 'number' and Ox.GetPlayer(player) or player
     local property = properties[propertyName]
     local component = property.components[componentId]
 
@@ -473,13 +473,13 @@ local function moveVehicle(player, property, component, data)
 end
 
 lib.callback.register('ox_property:parking', function(source, action, data)
-    local permitted = isPermitted(source, data.property, data.componentId)
+    local player = Ox.GetPlayer(source)
+    local permitted = isPermitted(player, data.property, data.componentId)
 
     if not permitted or permitted > 1 then
         return false, 'not_permitted'
     end
 
-    local player = Ox.GetPlayer(source)
     if action == 'get_vehicles' then
         return true, false, MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid})
     end
