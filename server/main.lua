@@ -338,7 +338,7 @@ local function storeVehicle(player, component, data)
         return false, 'vehicle_store_failed'
     end
 
-    vehicle.data = vehicleData(vehicle.model)
+    vehicle.data = vehicleData[vehicle.model]
     if player.charid ~= vehicle.owner or not component.vehicles[vehicle.data.type] then
         return false, 'vehicle_store_failed'
     end
@@ -391,7 +391,7 @@ local function retrieveVehicle(player, component, data)
     end
 
     local spawn = findClearSpawn(component.spawns, data.entities)
-    if not spawn or not component.vehicles[vehicleData(vehicle.model).type] then
+    if not spawn or not component.vehicles[vehicleData[vehicle.model].type] then
         return false, 'vehicle_retrieve_failed'
     end
 
@@ -409,7 +409,7 @@ local function moveVehicle(player, property, component, data)
     for i = 1, #vehicles do
         local veh = vehicles[i]
         if veh.plate == data.plate then
-            local seats = vehicleData(veh.model).seats
+            local seats = vehicleData[veh.model].seats
             for j = -1, seats - 1 do
                 if GetPedInVehicleSeat(veh.entity, j) ~= 0 then
                     return false, 'vehicle_recover_failed'
@@ -433,7 +433,7 @@ local function moveVehicle(player, property, component, data)
         db = true
     end
 
-    local vehData = vehicleData(vehicle.model)
+    local vehData = vehicleData[vehicle.model]
     if not vehData or not component.vehicles[vehData.type] then
         return false, recover and 'vehicle_recover_failed' or 'vehicle_move_failed'
     end
