@@ -330,13 +330,15 @@ local function clearVehicleOfPassengers(vehicle)
 end
 exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
 
+local vehicleData = Ox.GetVehicleData()
+
 local function storeVehicle(player, component, data)
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
     if not vehicle then
         return false, 'vehicle_store_failed'
     end
 
-    vehicle.data = Ox.GetVehicleData(vehicle.model)
+    vehicle.data = vehicleData(vehicle.model)
     if player.charid ~= vehicle.owner or not component.vehicles[vehicle.data.type] then
         return false, 'vehicle_store_failed'
     end
@@ -389,7 +391,7 @@ local function retrieveVehicle(player, component, data)
     end
 
     local spawn = findClearSpawn(component.spawns, data.entities)
-    if not spawn or not component.vehicles[Ox.GetVehicleData(vehicle.model).type] then
+    if not spawn or not component.vehicles[vehicleData(vehicle.model).type] then
         return false, 'vehicle_retrieve_failed'
     end
 
@@ -407,7 +409,7 @@ local function moveVehicle(player, property, component, data)
     for i = 1, #vehicles do
         local veh = vehicles[i]
         if veh.plate == data.plate then
-            local seats = Ox.GetVehicleData(veh.model).seats
+            local seats = vehicleData(veh.model).seats
             for j = -1, seats - 1 do
                 if GetPedInVehicleSeat(veh.entity, j) ~= 0 then
                     return false, 'vehicle_recover_failed'
@@ -431,14 +433,14 @@ local function moveVehicle(player, property, component, data)
         db = true
     end
 
-    local vehicleData = Ox.GetVehicleData(vehicle.model)
-    if not vehicleData or not component.vehicles[vehicleData.type] then
+    local vehData = vehicleData(vehicle.model)
+    if not vehData or not component.vehicles[vehData.type] then
         return false, recover and 'vehicle_recover_failed' or 'vehicle_move_failed'
     end
 
     if property.owner ~= player.charid and (property.owner or property.group)then
         local amount = recover and 1000 or 500
-        local message = (recover and '%s Recovery' or '%s Move'):format(vehicleData.name)
+        local message = (recover and '%s Recovery' or '%s Move'):format(vehData.name)
 
         if exports.pefcl:getDefaultAccountBalance(player.source).data >= amount then
             exports.pefcl:removeBankBalance(player.source, {amount = amount, message = message})
