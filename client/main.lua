@@ -710,7 +710,8 @@ local function isPermitted(property, componentId)
         return 1
     end
 
-    if propertyVariables.group and player.getGroup(propertyVariables.group) == #GlobalState[('group.%s'):format(propertyVariables.group)].grades then
+    local group = propertyVariables.group
+    if group and player.groups[group] == #GlobalState[('group.%s'):format(group)].grades then
         return 1
     end
 
