@@ -26,12 +26,18 @@ shared_scripts {
 client_scripts {
     '@ox_core/imports/client.lua',
     'client/main.lua',
+    'client/management.lua',
+    'client/parking.lua',
+    'client/wardrobe.lua',
 }
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     '@ox_core/imports/server.lua',
     'server/main.lua',
+    'server/management.lua',
+    'server/parking.lua',
+    'server/wardrobe.lua',
 }
 
 files {

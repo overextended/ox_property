@@ -1,15 +1,14 @@
-local propertyResources = {}
-local properties = {}
+Properties = {}
 
 exports('getPropertyData', function(property, componentId)
-    return componentId and properties[property].components[componentId] or properties[property]
+    return componentId and Properties[property].components[componentId] or Properties[property]
 end)
 
 local zones = {}
 
-local function isPermitted(player, propertyName, componentId)
+function IsPermitted(player, propertyName, componentId)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player
-    local property = properties[propertyName]
+    local property = Properties[propertyName]
     local component = property.components[componentId]
 
     local zone = zones[propertyName][componentId]
@@ -40,7 +39,7 @@ local function isPermitted(player, propertyName, componentId)
 
     return false
 end
-exports('isPermitted', isPermitted)
+exports('isPermitted', IsPermitted)
 
 local stashes = {}
 local stashHook
@@ -57,7 +56,7 @@ local function resetStashHook()
 
     stashHook = exports.ox_inventory:registerHook('openInventory', function(payload)
         local property, componentId = string.strsplit(':', payload.inventoryId)
-        if not isPermitted(payload.source, property, tonumber(componentId)) then
+        if not IsPermitted(payload.source, property, tonumber(componentId)) then
             return false
         end
     end, {
@@ -65,6 +64,7 @@ local function resetStashHook()
     })
 end
 
+local propertyResources = {}
 local defaultOwner = nil
 local defaultOwnerName
 local defaultGroup = nil
@@ -99,7 +99,7 @@ AddEventHandler('onResourceStart', function(resource)
 
     local propertyInsert = {}
     for k, v in pairs(data) do
-        properties[k] = v
+        Properties[k] = v
 
         local variables = existingProperties[k]
         if variables then
@@ -160,372 +160,7 @@ AddEventHandler('onResourceStop', function(resource)
     if not propertyResources[resource] then return end
 
     for i = 1, #propertyResources[resource] do
-        properties[propertyResources[resource][i]] = nil
+        Properties[propertyResources[resource][i]] = nil
     end
     propertyResources[resource] = nil
-end)
-
-local function getManagementData(player)
-    local data = {
-        groups = MySQL.query.await('SELECT name, label, grades FROM ox_groups'),
-        nearbyPlayers = {
-            {
-                name = player.name,
-                charid = player.charid
-            }
-        }
-    }
-
-    for i = 1, #data.groups do
-        local group = data.groups[i]
-        group.grades = json.decode(group.grades)
-    end
-
-    local playerPos = player.getCoords()
-    local players = Ox.GetPlayers()
-    local len = #players
-    for i = 1, len do
-        local nearbyPlayer = players[i]
-        if nearbyPlayer.source ~= player.source and #(nearbyPlayer.getCoords() - playerPos) < 10 then
-            data.nearbyPlayers[#data.nearbyPlayers + 1] = {
-                name = nearbyPlayer.name,
-                charid = nearbyPlayer.charid
-            }
-        end
-    end
-
-    return data
-end
-
-local function updateProperty(property)
-    properties[property.name] = property
-    GlobalState[('property.%s'):format(property.name)] = {
-        name = property.name,
-        permissions = property.permissions,
-        owner = property.owner,
-        ownerName = property.ownerName,
-        group = property.group,
-        groupName = property.groupName
-    }
-end
-
-local function updatePermissionLevel(property, data)
-    local level = property.permissions[data.level] or {}
-
-    if data.level == 1 then
-        data.permissions.components = nil
-    end
-
-    for k, v in pairs(data.permissions) do
-        if k == 'players' then
-            for key, value in pairs(v) do
-                level[key] = value or nil
-            end
-        elseif k == 'everyone' then
-            level.everyone = v or nil
-        else
-            for key, value in pairs(v) do
-                level[k] = level[k] or {}
-                level[k][key] = value ~= 0 and value or nil
-            end
-        end
-    end
-    property.permissions[data.level] = level
-
-    MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
-
-    updateProperty(property)
-
-    return true, 'permission_level_updated'
-end
-
-local function deletePermissionLevel(property, level)
-    if level == 1 then
-        return false, 'action_not_allowed'
-    end
-
-    property.permissions[level] = nil
-
-    MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
-
-    updateProperty(property)
-
-    return true, 'permission_level_deleted'
-end
-
-local function setPropertyValue(property, data)
-    if data.owner then
-        local owner = data.owner ~= 0 and data.owner or nil
-        MySQL.update('UPDATE ox_property SET owner = ? WHERE name = ?', {owner, property.name})
-
-        property.owner = owner
-        property.ownerName = owner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {owner}) or nil
-    elseif data.group then
-        local group = data.group ~= 0 and data.group or nil
-        MySQL.update('UPDATE ox_property SET `group` = ? WHERE name = ?', {group, property.name})
-
-        property.group = group
-        property.groupName = group and GlobalState[('group.%s'):format(group)].label or nil
-    end
-
-    updateProperty(property)
-
-    return true, 'property_value_set'
-end
-
-lib.callback.register('ox_property:management', function(source, action, data)
-    local permitted, msg = isPermitted(source, data.property, data.componentId)
-
-    if not permitted or permitted > 1 then
-        return false, msg or 'not_permitted'
-    end
-
-    if action == 'get_data' then
-        return getManagementData(Ox.GetPlayer(source))
-    end
-
-    local property = properties[data.property]
-    if action == 'update_permission' then
-        return updatePermissionLevel(property, data)
-    elseif action == 'delete_permission' then
-        return deletePermissionLevel(property, data.level)
-    elseif action == 'set_value' then
-        return setPropertyValue(property, data)
-    end
-end)
-
-local function clearVehicleOfPassengers(vehicle)
-    local passengers = {}
-    for i = -1, vehicle.data.seats - 1 do
-        local ped = GetPedInVehicleSeat(vehicle.entity, i)
-        if ped ~= 0 then
-            passengers[#passengers + 1] = ped
-            TaskLeaveVehicle(ped, vehicle.entity, 0)
-        end
-    end
-
-    if next(passengers) then
-        local empty
-        while not empty do
-            Wait(100)
-            empty = true
-            for i = 1, #passengers do
-                local passenger = passengers[i]
-                if GetVehiclePedIsIn(passenger) == vehicle.entity then
-                    empty = false
-                end
-            end
-        end
-
-        Wait(300)
-    end
-end
-exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
-
-local vehicleData = setmetatable({}, {
-	__index = function(self, index)
-		local data = Ox.GetVehicleData(index)
-
-		if data then
-			data = {
-				name = data.name,
-				type = data.type,
-				seats = data.seats,
-			}
-
-			self[index] = data
-			return data
-		end
-	end
-})
-
-local function storeVehicle(player, component, data)
-    local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
-    if not vehicle then
-        return false, 'vehicle_store_failed'
-    end
-
-    vehicle.data = vehicleData[vehicle.model]
-    if player.charid ~= vehicle.owner or not component.vehicles[vehicle.data.type] then
-        return false, 'vehicle_store_failed'
-    end
-
-    clearVehicleOfPassengers(vehicle)
-
-    vehicle.set('properties', data.properties)
-    vehicle.set('display')
-    vehicle.setStored(('%s:%s'):format(component.property, component.componentId), true)
-
-    TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'store')
-
-    return true, 'vehicle_stored'
-end
-
-local function isPointClear(point, entities)
-    for i = 1, #entities do
-        local entity = entities[i]
-        if #(point - entity) < 2.5 then
-            return false
-        end
-    end
-    return true
-end
-
-local function findClearSpawn(spawns, entities)
-    local len = #spawns
-    while next(spawns) do
-        local i = math.random(len)
-        local spawn = spawns[i]
-        if spawn and isPointClear(spawn.xyz, entities) then
-            local rotate = math.random(2) - 1
-            return {
-                coords = spawn.xyz,
-                heading = spawn.w + rotate * 180,
-                slot = i,
-                rotate = rotate == 1
-            }
-        else
-            spawns[i] = nil
-        end
-    end
-end
-exports('findClearSpawn', findClearSpawn)
-
-local function retrieveVehicle(player, component, data)
-    local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
-    if not vehicle or vehicle.stored ~= ('%s:%s'):format(component.property, component.componentId) then
-        return false, 'vehicle_retrieve_failed'
-    end
-
-    local spawn = findClearSpawn(component.spawns, data.entities)
-    if not spawn or not component.vehicles[vehicleData[vehicle.model].type] then
-        return false, 'vehicle_retrieve_failed'
-    end
-
-    Ox.CreateVehicle(vehicle.id, spawn.coords, spawn.heading)
-
-    TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'retrieve')
-
-    return true, 'vehicle_retrieved'
-end
-
-local function moveVehicle(player, property, component, data)
-    local vehicles = Ox.GetVehicles(true)
-    local vehicle, recover, db
-
-    for i = 1, #vehicles do
-        local veh = vehicles[i]
-        if veh.plate == data.plate then
-            local seats = vehicleData[veh.model].seats
-            for j = -1, seats - 1 do
-                if GetPedInVehicleSeat(veh.entity, j) ~= 0 then
-                    return false, 'vehicle_recover_failed'
-                end
-            end
-
-            vehicle = veh
-            recover = true
-            break
-        end
-    end
-
-    if not vehicle then
-        vehicle = MySQL.single.await('SELECT model, data, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
-
-        if not vehicle then
-            return false, 'vehicle_not_found'
-        end
-
-        recover = not vehicle.stored or not vehicle.stored:find(':')
-        db = true
-    end
-
-    local vehData = vehicleData[vehicle.model]
-    if not vehData or not component.vehicles[vehData.type] then
-        return false, recover and 'vehicle_recover_failed' or 'vehicle_move_failed'
-    end
-
-    if property.owner ~= player.charid and (property.owner or property.group)then
-        local amount = recover and 1000 or 500
-        local message = (recover and '%s Recovery' or '%s Move'):format(vehData.name)
-
-        if exports.pefcl:getDefaultAccountBalance(player.source).data >= amount then
-            exports.pefcl:removeBankBalance(player.source, {amount = amount, message = message})
-
-            exports.pefcl:addBankBalanceByIdentifier(player.source, {
-                identifier = property.group or property.owner,
-                amount = amount,
-                message = message
-            })
-        else
-            exports.pefcl:createInvoice(player.source, {
-                to = player.name,
-                toIdentifier = player.charid,
-                from = property.groupName or property.ownerName,
-                fromIdentifier = property.group or property.owner,
-                amount = amount,
-                message = message
-            })
-        end
-    end
-
-    if db then
-        vehicle.data = json.decode(vehicle.data) or {}
-        vehicle.data.display = nil
-
-        MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(property.name, component.componentId), json.encode(vehicle.data), data.plate})
-    else
-        vehicle.set('display')
-        vehicle.setStored(('%s:%s'):format(property.name, component.componentId), true)
-    end
-
-    TriggerEvent('ox_property:vehicleStateChange', data.plate, recover and 'recover' or 'move')
-
-    return true, recover and 'vehicle_recovered' or 'vehicle_moved'
-end
-
-lib.callback.register('ox_property:parking', function(source, action, data)
-    local player = Ox.GetPlayer(source)
-    local permitted, msg = isPermitted(player, data.property, data.componentId)
-
-    if not permitted or permitted > 1 then
-        return false, msg or 'not_permitted'
-    end
-
-    if action == 'get_vehicles' then
-        return  MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid}), false
-    end
-
-    local property = properties[data.property]
-    local component = property.components[data.componentId]
-    if action == 'store_vehicle' then
-        return storeVehicle(player, component, data)
-    elseif action == 'retrieve_vehicle' then
-        return retrieveVehicle(player, component, data)
-    elseif action == 'move_vehicle' then
-        return moveVehicle(player, property, component, data)
-    end
-end)
-
-local ox_appearance = exports.ox_appearance
-
-lib.callback.register('ox_property:wardrobe', function(source, action, data)
-    local permitted, msg = isPermitted(source, data.property, data.componentId)
-
-    if not permitted or permitted > 1 then
-        return false, msg or 'not_permitted'
-    end
-
-    if action == 'get_outfits' then
-        return {
-            personalOutfits = ox_appearance:outfitNames(Ox.GetPlayer(source).charid),
-            componentOutfits = ox_appearance:outfitNames(('%s:%s'):format(data.property, data.componentId))
-        }, false
-    elseif action == 'save_outfit' then
-        ox_appearance:saveOutfit(('%s:%s'):format(data.property, data.componentId), data.appearance, data.slot, data.outfitNames)
-
-        return true, 'outfit_saved'
-    elseif action == 'apply_outfit' then
-        return ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.componentId), data.slot), false
-    end
 end)
