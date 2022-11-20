@@ -107,7 +107,7 @@ local function setPropertyValue(property, data)
 end
 
 lib.callback.register('ox_property:management', function(source, action, data)
-    local permitted, msg = IsPermitted(source, data.property, data.componentId)
+    local permitted, msg = IsPermitted(source, data.property, data.componentId, 'management')
 
     if not permitted or permitted > 1 then
         return false, msg or 'not_permitted'
