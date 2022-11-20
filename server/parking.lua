@@ -190,7 +190,7 @@ end
 
 lib.callback.register('ox_property:parking', function(source, action, data)
     local player = Ox.GetPlayer(source)
-    local permitted, msg = IsPermitted(player, data.property, data.componentId)
+    local permitted, msg = IsPermitted(player, data.property, data.componentId, 'parking')
 
     if not permitted or permitted > 1 then
         return false, msg or 'not_permitted'

@@ -6,10 +6,14 @@ end)
 
 local zones = {}
 
-function IsPermitted(player, propertyName, componentId)
+function IsPermitted(player, propertyName, componentId, componentType)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player
     local property = Properties[propertyName]
     local component = property.components[componentId]
+
+    if componentType ~= component.type then
+        return false, 'component_mismatch'
+    end
 
     local zone = zones[propertyName][componentId]
     local coords = player.getCoords()
