@@ -87,7 +87,7 @@ local function vehicleList(data)
             },
             onSelect = function(args)
                 if args.action == 'Retrieve' then
-                    local success, msg = lib.callback.await('ox_property:parking', 100, 'retrieve_vehicle', {
+                    local response, msg = lib.callback.await('ox_property:parking', 100, 'retrieve_vehicle', {
                         property = data.component.property,
                         componentId = data.component.componentId,
                         plate = args.plate,
@@ -95,17 +95,17 @@ local function vehicleList(data)
                     })
 
                     if msg then
-                        lib.notify({title = msg, type = success and 'success' or 'error'})
+                        lib.notify({title = msg, type = response and 'success' or 'error'})
                     end
                 else
-                    local success, msg = lib.callback.await('ox_property:parking', 100, 'move_vehicle', {
+                    local response, msg = lib.callback.await('ox_property:parking', 100, 'move_vehicle', {
                         property = data.component.property,
                         componentId = data.component.componentId,
                         plate = args.plate
                     })
 
                     if msg then
-                        lib.notify({title = msg, type = success and 'success' or 'error'})
+                        lib.notify({title = msg, type = response and 'success' or 'error'})
                     end
                 end
             end,
@@ -147,15 +147,15 @@ end
 
 local componentActions = {
     management = function(component)
-        local success, msg, displayData = lib.callback.await('ox_property:management', 100, 'get_data', {
+        local displayData, msg, displayData = lib.callback.await('ox_property:management', 100, 'get_data', {
             property = component.property,
             componentId = component.componentId
         })
 
         if msg then
-            lib.notify({title = msg, type = success and 'success' or 'error'})
+            lib.notify({title = msg, type = displayData and 'success' or 'error'})
         end
-        if not success or not displayData then return end
+        if not displayData then return end
 
         local property = properties[component.property]
         local propertyVariables = GlobalState[('property.%s'):format(property.name)]
@@ -261,14 +261,14 @@ local componentActions = {
                         })
 
                         if confirm then
-                            local success, msg = lib.callback.await('ox_property:management', 100, 'delete_permission', {
+                            local response, msg = lib.callback.await('ox_property:management', 100, 'delete_permission', {
                                 property = component.property,
                                 componentId = component.componentId,
                                 level = level
                             })
 
                             if msg then
-                                lib.notify({title = msg, type = success and 'success' or 'error'})
+                                lib.notify({title = msg, type = response and 'success' or 'error'})
                             end
                         end
 
@@ -285,7 +285,7 @@ local componentActions = {
                     },
                     function(selected, scrollIndex, args)
                         if not scrollIndex then
-                            local success, msg = lib.callback.await('ox_property:management', 100, 'update_permission', {
+                            local response, msg = lib.callback.await('ox_property:management', 100, 'update_permission', {
                                 property = component.property,
                                 componentId = component.componentId,
                                 permissions = permissionData,
@@ -293,7 +293,7 @@ local componentActions = {
                             })
 
                             if msg then
-                                lib.notify({title = msg, type = success and 'success' or 'error'})
+                                lib.notify({title = msg, type = response and 'success' or 'error'})
                             end
                         end
                     end)
@@ -338,7 +338,7 @@ local componentActions = {
                         onClose = onClose
                     },
                     function(selected, scrollIndex, args)
-                        local success, msg = lib.callback.await('ox_property:management', 100, 'set_value', {
+                        local response, msg = lib.callback.await('ox_property:management', 100, 'set_value', {
                             property = component.property,
                             componentId = component.componentId,
                             owner = value == 'owner' and (args?.id or 0),
@@ -346,7 +346,7 @@ local componentActions = {
                         })
 
                         if msg then
-                            lib.notify({title = msg, type = success and 'success' or 'error'})
+                            lib.notify({title = msg, type = response and 'success' or 'error'})
                         end
                 end)
 
@@ -428,7 +428,7 @@ local componentActions = {
                             },
                             function(selected, scrollIndex, args)
                                 if not scrollIndex then
-                                    local success, msg = lib.callback.await('ox_property:management', 100, 'update_permission', {
+                                    local response, msg = lib.callback.await('ox_property:management', 100, 'update_permission', {
                                         property = component.property,
                                         componentId = component.componentId,
                                         permissions = permissionData,
@@ -436,7 +436,7 @@ local componentActions = {
                                     })
 
                                     if msg then
-                                        lib.notify({title = msg, type = success and 'success' or 'error'})
+                                        lib.notify({title = msg, type = response and 'success' or 'error'})
                                     end
                                 end
                             end)
@@ -452,29 +452,29 @@ local componentActions = {
     end,
     parking = function(component)
         local options = {}
-        local success, msg, vehicles = lib.callback.await('ox_property:parking', 100, 'get_vehicles', {
+        local vehicles, msg = lib.callback.await('ox_property:parking', 100, 'get_vehicles', {
             property = component.property,
             componentId = component.componentId
         })
 
         if msg then
-            lib.notify({title = msg, type = success and 'success' or 'error'})
+            lib.notify({title = msg, type = vehicles and 'success' or 'error'})
         end
-        if not success or not vehicles then return end
+        if not vehicles then return end
 
         if cache.seat == -1 then
             options[#options + 1] = {
                 title = 'Store Vehicle',
                 onSelect = function()
                     if cache.seat == -1 then
-                        local success, msg = lib.callback.await('ox_property:parking', 100, 'store_vehicle', {
+                        local response, msg = lib.callback.await('ox_property:parking', 100, 'store_vehicle', {
                             property = component.property,
                             componentId = component.componentId,
                             properties = lib.getVehicleProperties(cache.vehicle)
                         })
 
                         if msg then
-                            lib.notify({title = msg, type = success and 'success' or 'error'})
+                            lib.notify({title = msg, type = response and 'success' or 'error'})
                         end
                     else
                         lib.notify({title = "You are not in the driver's seat", type = 'error'})
@@ -524,15 +524,15 @@ local componentActions = {
     end,
     wardrobe = function(component)
         local options = {}
-        local success, msg, data = lib.callback.await('ox_property:wardrobe', 100, 'get_outfits', {
+        local data, msg = lib.callback.await('ox_property:wardrobe', 100, 'get_outfits', {
             property = component.property,
             componentId = component.componentId
         })
 
         if msg then
-            lib.notify({title = msg, type = success and 'success' or 'error'})
+            lib.notify({title = msg, type = data and 'success' or 'error'})
         end
-        if not success or not data then return end
+        if not data then return end
 
         local personalOutfits, componentOutfits in data
 
@@ -905,16 +905,16 @@ AddEventHandler('ox_property:setOutfit', function(data)
             {
                 title = 'Wear',
                 onSelect = function(args)
-                    local success, msg, data = lib.callback.await('ox_property:wardrobe', 100, 'apply_outfit', {
+                    local data, msg = lib.callback.await('ox_property:wardrobe', 100, 'apply_outfit', {
                         property = args.property,
                         componentId = args.componentId,
                         slot = args.slot
                     })
 
                     if msg then
-                        lib.notify({title = msg, type = success and 'success' or 'error'})
+                        lib.notify({title = msg, type = data and 'success' or 'error'})
                     end
-                    if not success or not data then return end
+                    if not data then return end
 
                     TriggerEvent('ox_property:applyOutfit', data)
                 end,

@@ -193,7 +193,7 @@ local function getManagementData(player)
         end
     end
 
-    return true, false, data
+    return data
 end
 
 local function updateProperty(property)
@@ -492,7 +492,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     end
 
     if action == 'get_vehicles' then
-        return true, false, MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid})
+        return  MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid}), false
     end
 
     local property = properties[data.property]
@@ -516,15 +516,15 @@ lib.callback.register('ox_property:wardrobe', function(source, action, data)
     end
 
     if action == 'get_outfits' then
-        return true, false, {
+        return {
             personalOutfits = ox_appearance:outfitNames(Ox.GetPlayer(source).charid),
             componentOutfits = ox_appearance:outfitNames(('%s:%s'):format(data.property, data.componentId))
-        }
+        }, false
     elseif action == 'save_outfit' then
         ox_appearance:saveOutfit(('%s:%s'):format(data.property, data.componentId), data.appearance, data.slot, data.outfitNames)
 
         return true, 'outfit_saved'
     elseif action == 'apply_outfit' then
-        return true, false, ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.componentId), data.slot)
+        return ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.componentId), data.slot), false
     end
 end)
