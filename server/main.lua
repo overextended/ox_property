@@ -183,7 +183,8 @@ local function getManagementData(player)
 
     local playerPos = player.getCoords()
     local players = Ox.GetPlayers()
-    for i = 1, #players do
+    local len = #players
+    for i = 1, len do
         local nearbyPlayer = players[i]
         if nearbyPlayer.source ~= player.source and #(nearbyPlayer.getCoords() - playerPos) < 10 then
             data.nearbyPlayers[#data.nearbyPlayers + 1] = {
