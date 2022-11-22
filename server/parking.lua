@@ -50,7 +50,7 @@ local function storeVehicle(player, component, data)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
     if not vehicle then
-        return false, 'vehicle_store_failed'
+        return false, 'vehicle_not_found'
     elseif player.charid ~= vehicle.owner then
         return false, 'not_vehicle_owner'
     end
@@ -101,13 +101,17 @@ exports('findClearSpawn', findClearSpawn)
 
 local function retrieveVehicle(player, component, data)
     local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
-    if not vehicle or vehicle.stored ~= ('%s:%s'):format(component.property, component.componentId) then
-        return false, 'vehicle_retrieve_failed'
+    if not vehicle then
+        return false, 'vehicle_not_found'
+    elseif vehicle.stored ~= ('%s:%s'):format(component.property, component.componentId) then
+        return false, 'component_mismatch'
     end
 
     local spawn = findClearSpawn(component.spawns, data.entities)
-    if not spawn or not component.vehicles[vehicleData[vehicle.model].type] then
-        return false, 'vehicle_retrieve_failed'
+    if not spawn then
+        return false, 'spawn_not_found'
+    elseif not component.vehicles[vehicleData[vehicle.model].type] then
+        return false, 'vehicle_requirements_not_met'
     end
 
     Ox.CreateVehicle(vehicle.id, spawn.coords, spawn.heading)
@@ -129,7 +133,7 @@ local function moveVehicle(player, property, component, data)
             local seats = vehicleData[veh.model].seats
             for j = -1, seats - 1 do
                 if GetPedInVehicleSeat(veh.entity, j) ~= 0 then
-                    return false, 'vehicle_recover_failed'
+                    return false, 'vehicle_in_use'
                 end
             end
 
@@ -153,8 +157,10 @@ local function moveVehicle(player, property, component, data)
     end
 
     local vehData = vehicleData[vehicle.model]
-    if not vehData or not component.vehicles[vehData.type] then
-        return false, recover and 'vehicle_recover_failed' or 'vehicle_move_failed'
+    if not vehData then
+        return false, 'model_not_found'
+    elseif not component.vehicles[vehData.type] then
+        return false, 'vehicle_requirements_not_met'
     end
 
     if property.owner ~= player.charid then
