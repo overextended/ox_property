@@ -1,31 +1,3 @@
-local function clearVehicleOfPassengers(vehicle)
-    local passengers = {}
-    for i = -1, vehicle.data.seats - 1 do
-        local ped = GetPedInVehicleSeat(vehicle.entity, i)
-        if ped ~= 0 then
-            passengers[#passengers + 1] = ped
-            TaskLeaveVehicle(ped, vehicle.entity, 0)
-        end
-    end
-
-    if next(passengers) then
-        local empty
-        while not empty do
-            Wait(100)
-            empty = true
-            for i = 1, #passengers do
-                local passenger = passengers[i]
-                if GetVehiclePedIsIn(passenger) == vehicle.entity then
-                    empty = false
-                end
-            end
-        end
-
-        Wait(300)
-    end
-end
-exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
-
 local vehicleData = setmetatable({}, {
 	__index = function(self, index)
 		local data = Ox.GetVehicleData(index)
@@ -43,6 +15,37 @@ local vehicleData = setmetatable({}, {
 	end
 })
 
+local function clearVehicleOfPassengers(data)
+    local entity, model, seats in data
+    seats = seats or vehicleData[model].seats
+
+    local passengers = {}
+    for i = -1, seats - 1 do
+        local ped = GetPedInVehicleSeat(entity, i)
+        if ped ~= 0 then
+            passengers[#passengers + 1] = ped
+            TaskLeaveVehicle(ped, entity, 0)
+        end
+    end
+
+    if next(passengers) then
+        local empty
+        while not empty do
+            Wait(100)
+            empty = true
+            for i = 1, #passengers do
+                local passenger = passengers[i]
+                if GetVehiclePedIsIn(passenger) == entity then
+                    empty = false
+                end
+            end
+        end
+
+        Wait(300)
+    end
+end
+exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
+
 local function storeVehicle(player, component, data)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
@@ -57,7 +60,7 @@ local function storeVehicle(player, component, data)
         return false, 'vehicle_requirements_not_met'
     end
 
-    clearVehicleOfPassengers(vehicle)
+    clearVehicleOfPassengers({entity = vehicle.entity, seats = vehicle.data.seats})
 
     vehicle.set('properties', data.properties)
     vehicle.set('display')
