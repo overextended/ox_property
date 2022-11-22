@@ -44,14 +44,17 @@ local vehicleData = setmetatable({}, {
 })
 
 local function storeVehicle(player, component, data)
+    player = type(player) == 'number' and Ox.GetPlayer(player) or player
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
     if not vehicle then
         return false, 'vehicle_store_failed'
+    elseif player.charid ~= vehicle.owner then
+        return false, 'not_vehicle_owner'
     end
 
     vehicle.data = vehicleData[vehicle.model]
-    if player.charid ~= vehicle.owner or not component.vehicles[vehicle.data.type] then
-        return false, 'vehicle_store_failed'
+    if not component.vehicles[vehicle.data.type] then
+        return false, 'vehicle_requirements_not_met'
     end
 
     clearVehicleOfPassengers(vehicle)
@@ -64,6 +67,7 @@ local function storeVehicle(player, component, data)
 
     return true, 'vehicle_stored'
 end
+exports('storeVehicle', storeVehicle)
 
 local function isPointClear(point, entities)
     for i = 1, #entities do
