@@ -63,10 +63,7 @@ local function storeVehicle(player, component, data)
     clearVehicleOfPassengers({entity = vehicle.entity, seats = vehicle.data.seats})
 
     vehicle.set('properties', data.properties)
-    vehicle.set('display')
     vehicle.setStored(('%s:%s'):format(component.property, component.componentId), true)
-
-    TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'store')
 
     return true, 'vehicle_stored'
 end
@@ -115,8 +112,6 @@ local function retrieveVehicle(player, component, data)
 
     Ox.CreateVehicle(vehicle.id, spawn.coords, spawn.heading)
 
-    TriggerEvent('ox_property:vehicleStateChange', vehicle.plate, 'retrieve')
-
     return true, 'vehicle_retrieved'
 end
 
@@ -127,6 +122,10 @@ local function moveVehicle(player, property, component, data)
     for i = 1, #vehicles do
         local veh = vehicles[i]
         if veh.plate == data.plate then
+            if veh.stored == 'displayed' then
+                return false, 'vehicle_cannot_be_modified_while_displayed'
+            end
+
             local seats = vehicleData[veh.model].seats
             for j = -1, seats - 1 do
                 if GetPedInVehicleSeat(veh.entity, j) ~= 0 then
@@ -141,10 +140,12 @@ local function moveVehicle(player, property, component, data)
     end
 
     if not vehicle then
-        vehicle = MySQL.single.await('SELECT model, data, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
+        vehicle = MySQL.single.await('SELECT model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
 
         if not vehicle then
             return false, 'vehicle_not_found'
+        elseif vehicle.stored == 'displayed' then
+            return false, 'vehicle_cannot_be_modified_while_displayed'
         end
 
         recover = not vehicle.stored or not vehicle.stored:find(':')
@@ -169,16 +170,10 @@ local function moveVehicle(player, property, component, data)
     end
 
     if db then
-        vehicle.data = json.decode(vehicle.data) or {}
-        vehicle.data.display = nil
-
-        MySQL.update.await('UPDATE vehicles SET stored = ?, data = ? WHERE plate = ?', {('%s:%s'):format(property.name, component.componentId), json.encode(vehicle.data), data.plate})
+        MySQL.update.await('UPDATE vehicles SET stored = ? WHERE plate = ?', {('%s:%s'):format(property.name, component.componentId), data.plate})
     else
-        vehicle.set('display')
         vehicle.setStored(('%s:%s'):format(property.name, component.componentId), true)
     end
-
-    TriggerEvent('ox_property:vehicleStateChange', data.plate, recover and 'recover' or 'move')
 
     return true, recover and 'vehicle_recovered' or 'vehicle_moved'
 end
