@@ -168,3 +168,53 @@ AddEventHandler('onResourceStop', function(resource)
     end
     propertyResources[resource] = nil
 end)
+
+local invoiceThreshold = 1000
+
+function Transaction(source, msg, data)
+    local available
+    local amount, from, to in data
+    if from then
+        local accounts = exports.pefcl:getAccountsByIdentifier(source, from.identifier).data
+        for i = 1, #accounts do
+            local account = accounts[i].dataValues
+            if account.isDefault then
+                available = account.balance
+            end
+        end
+    end
+
+    if not from or amount <= available then
+        if from then
+            exports.pefcl:removeBankBalanceByIdentifier(source, {
+                identifier = from.identifier,
+                amount = amount,
+                message = msg
+            })
+        end
+
+        if to then
+            exports.pefcl:addBankBalanceByIdentifier(source, {
+                identifier = to.identifier,
+                amount = amount,
+                message = msg
+            })
+        end
+
+        return true
+    elseif amount <= invoiceThreshold and from and to then
+        exports.pefcl:createInvoice(source, {
+            to = from.name,
+            toIdentifier = from.identifier,
+            from = to.name,
+            fromIdentifier = to.identifier,
+            amount = amount,
+            message = msg
+        })
+
+        return true
+    end
+
+    return false, 'transaction_failed'
+end
+exports('transaction', Transaction)

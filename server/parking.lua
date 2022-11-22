@@ -149,27 +149,15 @@ local function moveVehicle(player, property, component, data)
         return false, recover and 'vehicle_recover_failed' or 'vehicle_move_failed'
     end
 
-    if property.owner ~= player.charid and (property.owner or property.group)then
-        local amount = recover and 1000 or 500
-        local message = (recover and '%s Recovery' or '%s Move'):format(vehData.name)
+    if property.owner ~= player.charid then
+        local response, msg = Transaction(player.source, (recover and '%s Recovery' or '%s Move'):format(vehData.name), {
+            amount = recover and 1000 or 500,
+            from = {name = player.name, identifier = player.charid},
+            to = {name = property.groupName or property.ownerName, identifier = property.group or property.owner}
+        })
 
-        if exports.pefcl:getDefaultAccountBalance(player.source).data >= amount then
-            exports.pefcl:removeBankBalance(player.source, {amount = amount, message = message})
-
-            exports.pefcl:addBankBalanceByIdentifier(player.source, {
-                identifier = property.group or property.owner,
-                amount = amount,
-                message = message
-            })
-        else
-            exports.pefcl:createInvoice(player.source, {
-                to = player.name,
-                toIdentifier = player.charid,
-                from = property.groupName or property.ownerName,
-                fromIdentifier = property.group or property.owner,
-                amount = amount,
-                message = message
-            })
+        if not response then
+            return false, msg
         end
     end
 
