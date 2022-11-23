@@ -1,9 +1,4 @@
 Properties = {}
-
-exports('getPropertyData', function(property, componentId)
-    return componentId and Properties[property].components[componentId] or Properties[property]
-end)
-
 CurrentZone = nil
 
 local componentActions = {
@@ -200,6 +195,19 @@ local function getCurrentComponent()
     end
 end
 exports('getCurrentComponent', getCurrentComponent)
+
+exports('getPropertyData', function(property, componentId)
+    if not property then
+        local component = getCurrentComponent()
+        if not component then return false end
+
+        return Properties[component.property].components[component.componentId]
+    elseif not componentId then
+        return Properties[property]
+    end
+
+    return Properties[property].components[componentId]
+end)
 
 local function isPermitted(property, componentId)
     if not property or not componentId then
