@@ -99,8 +99,8 @@ local function findClearSpawn(spawns, entities)
 end
 exports('findClearSpawn', findClearSpawn)
 
-local function retrieveVehicle(player, component, data)
-    local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
+local function retrieveVehicle(charid, component, data)
+    local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, charid})
     if not vehicle then
         return false, 'vehicle_not_found'
     elseif vehicle.stored ~= ('%s:%s'):format(component.property, component.componentId) then
@@ -118,6 +118,7 @@ local function retrieveVehicle(player, component, data)
 
     return true, 'vehicle_retrieved'
 end
+exports('retrieveVehicle', retrieveVehicle)
 
 local function moveVehicle(player, property, component, data)
     local vehicles = Ox.GetVehicles(true)
@@ -201,7 +202,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     if action == 'store_vehicle' then
         return storeVehicle(player, component, data)
     elseif action == 'retrieve_vehicle' then
-        return retrieveVehicle(player, component, data)
+        return retrieveVehicle(player.charid, component, data)
     elseif action == 'move_vehicle' then
         return moveVehicle(player, property, component, data)
     end
