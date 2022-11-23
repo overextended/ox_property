@@ -19,4 +19,6 @@ lib.callback.register('ox_property:wardrobe', function(source, action, data)
     elseif action == 'apply_outfit' then
         return ox_appearance:loadOutfit(('%s:%s'):format(data.property, data.componentId), data.slot)
     end
+
+    return false, 'invalid_action'
 end)

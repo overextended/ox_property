@@ -206,4 +206,6 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     elseif action == 'move_vehicle' then
         return moveVehicle(player, property, component, data)
     end
+
+    return false, 'invalid_action'
 end)

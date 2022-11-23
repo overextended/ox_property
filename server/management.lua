@@ -125,4 +125,6 @@ lib.callback.register('ox_property:management', function(source, action, data)
     elseif action == 'set_value' then
         return setPropertyValue(property, data)
     end
+
+    return false, 'invalid_action'
 end)
