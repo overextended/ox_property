@@ -90,42 +90,8 @@ AddEventHandler('onResourceStart', function(resource)
         propertyResources[resource][#propertyResources[resource] + 1] = propertyName
     end
 
-    defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {defaultOwner})
-    defaultGroupName = defaultGroupName or defaultGroup and MySQL.scalar.await('SELECT label FROM ox_groups WHERE name = ?', {defaultGroup})
-
-    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstname, " ", characters.lastname) AS ownerName, ox_groups.label as ownerLabel FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charid LEFT JOIN ox_groups ON ox_property.group = ox_groups.name')
-
-    local existingProperties = {}
-    for i = 1, #result do
-        local property = result[i]
-        existingProperties[property.name] = property
-    end
-
-    local propertyInsert = {}
     for k, v in pairs(data) do
         Properties[k] = v
-
-        local variables = existingProperties[k]
-        if variables then
-            variables.name = k
-            variables.permissions = json.decode(variables.permissions)
-        else
-            variables = {
-                name = k,
-                permissions = {{}},
-                owner = defaultOwner,
-                ownerName = defaultOwnerName,
-                group = defaultGroup,
-                groupName = defaultGroupName
-            }
-
-            propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultGroup}
-        end
-
-        GlobalState[('property.%s'):format(k)] = variables
-        for key, value in pairs(variables) do
-            v[key] = value
-        end
 
         zones[k] = {}
         for i = 1, #v.components do
@@ -150,6 +116,42 @@ AddEventHandler('onResourceStart', function(resource)
 
                 exports.ox_inventory:RegisterStash(stashName, ('%s - %s'):format(v.label, component.name), component.slots or 50, component.maxWeight or 50000, not component.shared == true, nil, component.coords)
             end
+        end
+    end
+
+    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstname, " ", characters.lastname) AS ownerName, ox_groups.label as ownerLabel FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charid LEFT JOIN ox_groups ON ox_property.group = ox_groups.name')
+
+    defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {defaultOwner})
+    defaultGroupName = defaultGroupName or defaultGroup and MySQL.scalar.await('SELECT label FROM ox_groups WHERE name = ?', {defaultGroup})
+
+    local existingProperties = {}
+    for i = 1, #result do
+        local property = result[i]
+        existingProperties[property.name] = property
+    end
+
+    local propertyInsert = {}
+    for k, v in pairs(data) do
+        local variables = existingProperties[k]
+        if variables then
+            variables.name = k
+            variables.permissions = json.decode(variables.permissions)
+        else
+            variables = {
+                name = k,
+                permissions = {{}},
+                owner = defaultOwner,
+                ownerName = defaultOwnerName,
+                group = defaultGroup,
+                groupName = defaultGroupName
+            }
+
+            propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultGroup}
+        end
+
+        GlobalState[('property.%s'):format(k)] = variables
+        for key, value in pairs(variables) do
+            v[key] = value
         end
     end
 
