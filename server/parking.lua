@@ -69,45 +69,15 @@ local function storeVehicle(player, component, data)
 end
 exports('storeVehicle', storeVehicle)
 
-local function isPointClear(point, entities)
-    for i = 1, #entities do
-        local entity = entities[i]
-        if #(point - entity) < 2.5 then
-            return false
-        end
-    end
-    return true
-end
-
-local function findClearSpawn(spawns, entities)
-    local len = #spawns
-    while next(spawns) do
-        local i = math.random(len)
-        local spawn = spawns[i]
-        if spawn and isPointClear(spawn.xyz, entities) then
-            local rotate = math.random(2) - 1
-            return {
-                coords = spawn.xyz,
-                heading = spawn.w + rotate * 180,
-                slot = i,
-                rotate = rotate == 1
-            }
-        else
-            spawns[i] = nil
-        end
-    end
-end
-exports('findClearSpawn', findClearSpawn)
-
-local function retrieveVehicle(charid, component, data)
-    local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, charid})
+local function retrieveVehicle(player, component, data)
+    local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
     if not vehicle then
         return false, 'vehicle_not_found'
     elseif vehicle.stored ~= ('%s:%s'):format(component.property, component.componentId) then
         return false, 'component_mismatch'
     end
 
-    local spawn = findClearSpawn(component.spawns, data.entities)
+    local spawn = lib.callback.await('ox_property:findClearSpawn', player.source)
     if not spawn then
         return false, 'spawn_not_found'
     elseif not component.vehicles[vehicleData[vehicle.model].type] then
@@ -202,7 +172,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     if action == 'store_vehicle' then
         return storeVehicle(player, component, data)
     elseif action == 'retrieve_vehicle' then
-        return retrieveVehicle(player.charid, component, data)
+        return retrieveVehicle(player, component, data)
     elseif action == 'move_vehicle' then
         return moveVehicle(player, property, component, data)
     end

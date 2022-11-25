@@ -1,27 +1,3 @@
-local function getZoneEntities()
-    local entities = {}
-    local peds = GetGamePool('CPed')
-    for i = 1, #peds do
-        local ped = peds[i]
-        local pedCoords = GetEntityCoords(ped)
-        if CurrentZone and CurrentZone:contains(pedCoords) then
-            entities[#entities + 1] = pedCoords
-        end
-    end
-
-    local vehicles = GetGamePool('CVehicle')
-    for i = 1, #vehicles do
-        local vehicle = vehicles[i]
-        local vehicleCoords = GetEntityCoords(vehicle)
-        if CurrentZone and CurrentZone:contains(vehicleCoords) then
-            entities[#entities + 1] = vehicleCoords
-        end
-    end
-
-    return entities
-end
-exports('getZoneEntities', getZoneEntities)
-
 local vehicleNames = setmetatable({}, {
 	__index = function(self, index)
 		local data = Ox.GetVehicleData(index)
@@ -68,8 +44,7 @@ local function vehicleList(data)
                     local response, msg = lib.callback.await('ox_property:parking', 100, 'retrieve_vehicle', {
                         property = data.component.property,
                         componentId = data.component.componentId,
-                        plate = args.plate,
-                        entities = getZoneEntities()
+                        plate = args.plate
                     })
 
                     if msg then
@@ -175,3 +150,59 @@ RegisterComponentAction('parking', function(component)
 end, {'All access'})
 
 RegisterMenu('vehicle_list', 'contextMenu')
+
+local function isPointClear(point, entities)
+    for i = 1, #entities do
+        local entity = entities[i]
+        if #(point - entity) < 2.5 then
+            return false
+        end
+    end
+    return true
+end
+
+local function findClearSpawn(spawns, entities)
+    local len = #spawns
+    while next(spawns) do
+        local i = math.random(len)
+        local spawn = spawns[i]
+        if spawn and isPointClear(spawn.xyz, entities) then
+            local rotate = math.random(2) - 1
+            return {
+                coords = spawn.xyz,
+                heading = spawn.w + rotate * 180,
+                slot = i,
+                rotate = rotate == 1
+            }
+        else
+            spawns[i] = nil
+        end
+    end
+
+    return false
+end
+
+lib.callback.register('ox_property:findClearSpawn', function()
+    if not CurrentZone then
+        return false
+    end
+
+    local component = Properties[CurrentZone.property].components[CurrentZone.componentId]
+    if not component.spawns then
+        return false
+    end
+
+    local entities = {}
+    local pool = {table.unpack(GetGamePool('CPed')), table.unpack(GetGamePool('CVehicle'))}
+    local len = #pool
+
+    for i = 1, len do
+        local entity = pool[i]
+        local entityCoords = GetEntityCoords(entity)
+        if CurrentZone:contains(entityCoords) then
+            entities[#entities + 1] = entityCoords
+        end
+    end
+
+    return findClearSpawn(component.spawns, entities)
+end)
