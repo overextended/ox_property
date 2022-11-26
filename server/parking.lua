@@ -46,7 +46,7 @@ local function clearVehicleOfPassengers(data)
 end
 exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
 
-local function storeVehicle(player, component, data)
+local function storeVehicle(player, component, properties)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
     if not vehicle then
@@ -62,15 +62,16 @@ local function storeVehicle(player, component, data)
 
     clearVehicleOfPassengers({entity = vehicle.entity, seats = vehicle.data.seats})
 
-    vehicle.set('properties', data.properties)
+    vehicle.set('properties', properties)
     vehicle.setStored(('%s:%s'):format(component.property, component.componentId), true)
 
     return true, 'vehicle_stored'
 end
 exports('storeVehicle', storeVehicle)
 
-local function retrieveVehicle(player, component, data)
-    local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
+local function retrieveVehicle(player, component, plate)
+    player = type(player) == 'number' and Ox.GetPlayer(player) or player
+    local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {plate, player.charid})
     if not vehicle then
         return false, 'vehicle_not_found'
     elseif vehicle.stored ~= ('%s:%s'):format(component.property, component.componentId) then
@@ -170,9 +171,9 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     local property = Properties[data.property]
     local component = property.components[data.componentId]
     if action == 'store_vehicle' then
-        return storeVehicle(player, component, data)
+        return storeVehicle(player, component, data.properties)
     elseif action == 'retrieve_vehicle' then
-        return retrieveVehicle(player, component, data)
+        return retrieveVehicle(player, component, data.plate)
     elseif action == 'move_vehicle' then
         return moveVehicle(player, property, component, data)
     end
