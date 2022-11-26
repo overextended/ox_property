@@ -91,6 +91,8 @@ local function loadProperty(resource, file)
 
     for i = 1, #data.components do
         local component = data.components[i]
+        component.property = name
+        component.componentId = i
 
         if component.point then
             components[i] = lib.points.new(component.point, 16, {
