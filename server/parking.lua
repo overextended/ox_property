@@ -71,7 +71,8 @@ exports('storeVehicle', storeVehicle)
 
 local function retrieveVehicle(player, component, plate)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player
-    local vehicle = MySQL.single.await('SELECT id, plate, model, stored FROM vehicles WHERE plate = ? AND owner = ?', {plate, player.charid})
+    local vehicle = MySQL.single.await('SELECT `id`, `model`, `stored` FROM vehicles WHERE plate = ? AND owner = ?', {plate, player.charid})
+
     if not vehicle then
         return false, 'vehicle_not_found'
     elseif vehicle.stored ~= ('%s:%s'):format(component.property, component.componentId) then
@@ -79,6 +80,7 @@ local function retrieveVehicle(player, component, plate)
     end
 
     local spawn = lib.callback.await('ox_property:findClearSpawn', player.source)
+
     if not spawn then
         return false, 'spawn_not_found'
     elseif not component.vehicles[vehicleData[vehicle.model].type] then
@@ -165,7 +167,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     end
 
     if action == 'get_vehicles' then
-        return MySQL.query.await('SELECT * FROM vehicles WHERE owner = ?', {player.charid})
+        return MySQL.query.await('SELECT `plate`, `stored`, `model` FROM vehicles WHERE owner = ?', {player.charid})
     end
 
     local property = Properties[data.property]
