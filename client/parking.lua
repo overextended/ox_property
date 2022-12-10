@@ -44,7 +44,7 @@ local function vehicleList(data)
                     local response, msg = lib.callback.await('ox_property:parking', 100, 'retrieve_vehicle', {
                         property = data.component.property,
                         componentId = data.component.componentId,
-                        plate = args.plate
+                        id = args.id
                     })
 
                     if msg then
@@ -54,7 +54,7 @@ local function vehicleList(data)
                     local response, msg = lib.callback.await('ox_property:parking', 100, 'move_vehicle', {
                         property = data.component.property,
                         componentId = data.component.componentId,
-                        plate = args.plate
+                        id = args.id
                     })
 
                     if msg then
@@ -63,7 +63,7 @@ local function vehicleList(data)
                 end
             end,
             args = {
-                plate = vehicle.plate,
+                id = vehicle.id,
                 action = action
             }
         }

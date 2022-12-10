@@ -69,9 +69,9 @@ local function storeVehicle(player, component, properties)
 end
 exports('storeVehicle', storeVehicle)
 
-local function retrieveVehicle(player, component, plate)
+local function retrieveVehicle(player, component, id)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player
-    local vehicle = MySQL.single.await('SELECT `id`, `model`, `stored` FROM vehicles WHERE plate = ? AND owner = ?', {plate, player.charid})
+    local vehicle = MySQL.single.await('SELECT `id`, `model`, `stored` FROM vehicles WHERE id = ? AND owner = ?', {id, player.charid})
 
     if not vehicle then
         return false, 'vehicle_not_found'
@@ -99,7 +99,7 @@ local function moveVehicle(player, property, component, data)
 
     for i = 1, #vehicles do
         local veh = vehicles[i]
-        if veh.plate == data.plate then
+        if veh.id == data.id then
             if veh.stored == 'displayed' then
                 return false, 'vehicle_cannot_be_modified_while_displayed'
             end
@@ -118,7 +118,7 @@ local function moveVehicle(player, property, component, data)
     end
 
     if not vehicle then
-        vehicle = MySQL.single.await('SELECT model, stored FROM vehicles WHERE plate = ? AND owner = ?', {data.plate, player.charid})
+        vehicle = MySQL.single.await('SELECT `model`, `stored` FROM vehicles WHERE id = ? AND owner = ?', {data.id, player.charid})
 
         if not vehicle then
             return false, 'vehicle_not_found'
@@ -150,7 +150,7 @@ local function moveVehicle(player, property, component, data)
     end
 
     if db then
-        MySQL.update.await('UPDATE vehicles SET stored = ? WHERE plate = ?', {('%s:%s'):format(property.name, component.componentId), data.plate})
+        MySQL.update.await('UPDATE vehicles SET `stored` = ? WHERE id = ?', {('%s:%s'):format(property.name, component.componentId), data.id})
     else
         vehicle.setStored(('%s:%s'):format(property.name, component.componentId), true)
     end
@@ -167,7 +167,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     end
 
     if action == 'get_vehicles' then
-        return MySQL.query.await('SELECT `plate`, `stored`, `model` FROM vehicles WHERE owner = ?', {player.charid})
+        return MySQL.query.await('SELECT `id`, `plate`, `stored`, `model` FROM vehicles WHERE owner = ?', {player.charid})
     end
 
     local property = Properties[data.property]
@@ -175,7 +175,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     if action == 'store_vehicle' then
         return storeVehicle(player, component, data.properties)
     elseif action == 'retrieve_vehicle' then
-        return retrieveVehicle(player, component, data.plate)
+        return retrieveVehicle(player, component, data.id)
     elseif action == 'move_vehicle' then
         return moveVehicle(player, property, component, data)
     end
