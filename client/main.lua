@@ -1,5 +1,13 @@
 Properties = {}
+PropertyVariables = {}
 CurrentZone = nil
+
+AddStateBagChangeHandler(nil, 'global', function(bagName, key, value, reserved, replicated)
+    local property = key:match('property%.([%w_]+)')
+    if property then
+        PropertyVariables[property] = value
+    end
+end)
 
 local componentActions = {
     stash = function(component)
@@ -73,6 +81,7 @@ local function loadProperty(resource, file)
 
     Properties[name] = data
     Properties[name].name = name
+    PropertyVariables[name] = GlobalState[('property.%s'):format(name)]
 
     if data.blip and data.sprite then
         local x, y, z in data.blip
@@ -220,20 +229,20 @@ local function isPermitted(property, componentId)
         componentId = component.componentId
     end
 
-    local propertyVariables = GlobalState[('property.%s'):format(property)]
+    local variables = PropertyVariables[property]
 
-    if player.charid == propertyVariables.owner then
+    if player.charid == variables.owner then
         return 1
     end
 
-    local group = propertyVariables.group
+    local group = variables.group
     if group and player.groups[group] == #GlobalState[('group.%s'):format(group)].grades then
         return 1
     end
 
-    if next(propertyVariables.permissions) then
-        for i = 1, #propertyVariables.permissions do
-            local level = propertyVariables.permissions[i]
+    if next(variables.permissions) then
+        for i = 1, #variables.permissions do
+            local level = variables.permissions[i]
             local access = i == 1 and 1 or level.components[componentId]
             if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
                 return access

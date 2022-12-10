@@ -29,20 +29,20 @@ RegisterComponentAction('management', function(component)
     if not displayData then return end
 
     local property = Properties[component.property]
-    local propertyVariables = GlobalState[('property.%s'):format(property.name)]
+    local variables = PropertyVariables[property.name]
     local values = {'Edit Access', 'Edit Members', 'Delete Level'}
     local options = {
         {
-            label = ('Owner: %s'):format(propertyVariables.ownerName or 'None'),
+            label = ('Owner: %s'):format(variables.ownerName or 'None'),
             description = 'Set Property Owner'
         },
         {
-            label = ('Group: %s'):format(propertyVariables.groupName or 'None'),
+            label = ('Group: %s'):format(variables.groupName or 'None'),
             description = 'Set Property Group'
         }
     }
 
-    for i = 1, #propertyVariables.permissions do
+    for i = 1, #variables.permissions do
         options[#options + 1] = {
             label = ('Level %s'):format(i),
             values = values
@@ -58,8 +58,8 @@ RegisterComponentAction('management', function(component)
         cb = function(selected, scrollIndex, args)
             permissionData = {}
 
-            local level = scrollIndex and selected - 2 or #propertyVariables.permissions + 1
-            local permissionLevel = propertyVariables.permissions[level]
+            local level = scrollIndex and selected - 2 or #variables.permissions + 1
+            local permissionLevel = variables.permissions[level]
             local title = values[scrollIndex] or 'New Level'
 
             if scrollIndex then
