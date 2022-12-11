@@ -73,6 +73,7 @@ local defaultOwner = nil
 local defaultOwnerName
 local defaultGroup = nil
 local defaultGroupName
+local defaultGroupColour
 
 AddEventHandler('onResourceStart', function(resource)
     local count = GetNumResourceMetadata(resource, 'ox_property_data')
@@ -119,10 +120,15 @@ AddEventHandler('onResourceStart', function(resource)
         end
     end
 
-    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstname, " ", characters.lastname) AS ownerName, ox_groups.label as ownerLabel FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charid LEFT JOIN ox_groups ON ox_property.group = ox_groups.name')
+    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstname, " ", characters.lastname) AS ownerName, ox_groups.label as groupName, ox_groups.colour as colour FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charid LEFT JOIN ox_groups ON ox_property.group = ox_groups.name')
 
     defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {defaultOwner})
-    defaultGroupName = defaultGroupName or defaultGroup and MySQL.scalar.await('SELECT label FROM ox_groups WHERE name = ?', {defaultGroup})
+
+    if defaultGroup and not (defaultGroupName and defaultGroupColour) then
+        local label, colour in MySQL.scalar.await('SELECT label, colour FROM ox_groups WHERE name = ?', {defaultGroup})
+        defaultGroupName = label
+        defaultGroupColour = colour
+    end
 
     local existingProperties = {}
     for i = 1, #result do
@@ -143,7 +149,8 @@ AddEventHandler('onResourceStart', function(resource)
                 owner = defaultOwner,
                 ownerName = defaultOwnerName,
                 group = defaultGroup,
-                groupName = defaultGroupName
+                groupName = defaultGroupName,
+                colour = defaultGroupColour
             }
 
             propertyInsert[#propertyInsert + 1] = {k, defaultOwner, defaultGroup}

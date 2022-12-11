@@ -2,13 +2,6 @@ Properties = {}
 PropertyVariables = {}
 CurrentZone = nil
 
-AddStateBagChangeHandler(nil, 'global', function(bagName, key, value, reserved, replicated)
-    local property = key:match('property%.([%w_]+)')
-    if property then
-        PropertyVariables[property] = value
-    end
-end)
-
 local componentActions = {
     stash = function(component)
         exports.ox_inventory:openInventory('stash', component.name)
@@ -44,6 +37,39 @@ function RegisterMenu(menu, menuType)
 end
 exports('registerMenu', RegisterMenu)
 
+local function setBlipVariables(blip, property)
+    local variables = PropertyVariables[property]
+    SetBlipColour(blip, variables.colour)
+    SetBlipShrink(blip, true)
+
+    if variables.owner ~= player.charid and not (variables.group and player.groups[variables.group]) then
+        SetBlipAsShortRange(blip, true)
+    end
+end
+
+local componentRegistry = {}
+
+AddStateBagChangeHandler(nil, 'global', function(bagName, key, value, reserved, replicated)
+    local property = key:match('property%.([%w_]+)')
+    if property then
+        PropertyVariables[property] = value
+        local blip = componentRegistry[property]?.blip
+        if blip then
+            setBlipVariables(blip, property)
+        end
+    end
+end)
+
+local function refreshGroups()
+    for name, data in pairs(componentRegistry) do
+        setBlipVariables(data.blip, name)
+    end
+end
+
+AddEventHandler('ox:playerLoaded', refreshGroups)
+
+RegisterNetEvent('ox:setGroup', refreshGroups)
+
 local function nearbyPoint(point)
     DrawMarker(2, point.coords.x, point.coords.y, point.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.15, 30, 30, 150, 222, false, false, 0, true, false, false, false)
 end
@@ -67,7 +93,6 @@ local function onExit(self)
 end
 
 local propertyRegistry = {}
-local componentRegistry = {}
 
 local function loadProperty(resource, file)
     local name = file:match('([%w_]+)%..+$')
@@ -89,9 +114,10 @@ local function loadProperty(resource, file)
         components.blip = blip
 
         SetBlipSprite(blip, data.sprite)
-        SetBlipDisplay(blip, 2)
-        SetBlipShrink(blip, true)
-        SetBlipAsShortRange(blip, true)
+
+        if player then
+            setBlipVariables(blip, name)
+        end
 
         AddTextEntry(name, data.label)
         BeginTextCommandSetBlipName(name)

@@ -8,3 +8,5 @@ CREATE TABLE IF NOT EXISTS `ox_property` (
   CONSTRAINT `FK_ox_property_characters` FOREIGN KEY (`owner`) REFERENCES `characters` (`charid`) ON UPDATE CASCADE ON DELETE SET NULL,
   CONSTRAINT `FK_ox_property_groups` FOREIGN KEY (`group`) REFERENCES `ox_groups` (`name`) ON UPDATE CASCADE ON DELETE SET NULL
 );
+
+ALTER TABLE `ox_groups` ADD COLUMN `colour` TINYINT(3) UNSIGNED DEFAULT NULL;

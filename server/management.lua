@@ -38,7 +38,8 @@ local function updateProperty(property)
         owner = property.owner,
         ownerName = property.ownerName,
         group = property.group,
-        groupName = property.groupName
+        groupName = property.groupName,
+        colour = property.colour
     }
 end
 
@@ -98,7 +99,17 @@ local function setPropertyValue(property, data)
         MySQL.update('UPDATE ox_property SET `group` = ? WHERE name = ?', {group, property.name})
 
         property.group = group
-        property.groupName = group and GlobalState[('group.%s'):format(group)].label or nil
+        if group then
+            local result = MySQL.single.await('SELECT label, colour FROM ox_groups WHERE name = ?', {group})
+
+            if result then
+                property.groupName = result.label
+                property.colour = result.colour
+            end
+        else
+            property.groupName = nil
+            property.colour = nil
+        end
     end
 
     updateProperty(property)
