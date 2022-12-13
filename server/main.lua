@@ -125,7 +125,7 @@ AddEventHandler('onResourceStart', function(resource)
     defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {defaultOwner})
 
     if defaultGroup and not (defaultGroupName and defaultGroupColour) then
-        local label, colour in MySQL.scalar.await('SELECT label, colour FROM ox_groups WHERE name = ?', {defaultGroup})
+        local label, colour in MySQL.single.await('SELECT label, colour FROM ox_groups WHERE name = ?', {defaultGroup})
         defaultGroupName = label
         defaultGroupColour = colour
     end
