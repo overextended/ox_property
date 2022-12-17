@@ -60,7 +60,7 @@ local function resetStashHook()
 
     stashHook = exports.ox_inventory:registerHook('openInventory', function(payload)
         local property, componentId = string.strsplit(':', payload.inventoryId)
-        if not IsPermitted(payload.source, property, tonumber(componentId)) then
+        if not IsPermitted(payload.source, property, tonumber(componentId), 'stash') then
             return false
         end
     end, {
