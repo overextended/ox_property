@@ -198,9 +198,11 @@ lib.callback.register('ox_property:findClearSpawn', function()
 
     for i = 1, len do
         local entity = pool[i]
-        local entityCoords = GetEntityCoords(entity)
-        if CurrentZone:contains(entityCoords) then
-            entities[#entities + 1] = entityCoords
+        if entity ~= cache.ped then
+            local entityCoords = GetEntityCoords(entity)
+            if CurrentZone:contains(entityCoords) then
+                entities[#entities + 1] = entityCoords
+            end
         end
     end
 
