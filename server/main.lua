@@ -17,6 +17,7 @@ function IsPermitted(player, propertyName, componentId, componentType)
 
     local zone = zones[propertyName][componentId]
     local coords = player.getCoords()
+
     if zone and not zone:contains(coords) then
         return false, 'component_mismatch'
     elseif not zone and #(component.point - coords) > 1 then
@@ -35,6 +36,7 @@ function IsPermitted(player, propertyName, componentId, componentType)
         for i = 1, #property.permissions do
             local level = property.permissions[i]
             local access = i == 1 and 1 or level.components[component.componentId]
+
             if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
                 return access
             end
@@ -50,6 +52,7 @@ local stashHook
 
 local function resetStashHook()
     local stashesArray = {}
+
     for stash in pairs(stashes) do
         stashesArray[#stashesArray + 1] = stash
     end
@@ -60,6 +63,7 @@ local function resetStashHook()
 
     stashHook = exports.ox_inventory:registerHook('openInventory', function(payload)
         local property, componentId = string.strsplit(':', payload.inventoryId)
+
         if not IsPermitted(payload.source, property, tonumber(componentId), 'stash') then
             return false
         end
@@ -81,6 +85,7 @@ AddEventHandler('onResourceStart', function(resource)
 
     propertyResources[resource] = {}
     local data = {}
+
     for i = 0, count - 1 do
         local file = GetResourceMetadata(resource, 'ox_property_data', i)
         local func, err = load(LoadResourceFile(resource, file), ('@@%s%s'):format(resource, file), 't', Shared.DATA_ENVIRONMENT)
@@ -93,8 +98,8 @@ AddEventHandler('onResourceStart', function(resource)
 
     for k, v in pairs(data) do
         Properties[k] = v
-
         zones[k] = {}
+
         for i = 1, #v.components do
             local component = v.components[i]
             component.property = k
@@ -131,12 +136,13 @@ AddEventHandler('onResourceStart', function(resource)
     end
 
     local existingProperties = {}
+    local propertyInsert = {}
+
     for i = 1, #result do
         local property = result[i]
         existingProperties[property.name] = property
     end
 
-    local propertyInsert = {}
     for k, v in pairs(data) do
         local variables = existingProperties[k]
         if variables then
@@ -157,6 +163,7 @@ AddEventHandler('onResourceStart', function(resource)
         end
 
         GlobalState[('property.%s'):format(k)] = variables
+
         for key, value in pairs(variables) do
             v[key] = value
         end
@@ -175,6 +182,7 @@ AddEventHandler('onResourceStop', function(resource)
     for i = 1, #propertyResources[resource] do
         Properties[propertyResources[resource][i]] = nil
     end
+
     propertyResources[resource] = nil
 end)
 

@@ -52,6 +52,7 @@ AddStateBagChangeHandler(nil, 'global', function(bagName, key, value, reserved, 
     if property then
         PropertyVariables[property] = value
         local blip = componentRegistry[property]?.blip
+
         if blip then
             setBlipVariables(blip, property)
         end
@@ -65,7 +66,6 @@ local function refreshGroups()
 end
 
 AddEventHandler('ox:playerLoaded', refreshGroups)
-
 RegisterNetEvent('ox:setGroup', refreshGroups)
 
 local function nearbyPoint(point)
@@ -157,6 +157,7 @@ local function loadProperty(resource, file)
 
             if component.disableGenerators then
                 local point1, point2
+
                 if component.sphere then
                     point1, point2 = glm.sphere.maximalContainedAABB(zoneData.coords, zoneData.radius)
                 else
@@ -165,6 +166,7 @@ local function loadProperty(resource, file)
                     point1 -= verticalOffset
                     point2 += verticalOffset
                 end
+
                 SetAllVehicleGeneratorsActiveInArea(point1.x, point1.y, point1.z, point2.x, point2.y, point2.z, false, false)
             end
         end
