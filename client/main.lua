@@ -212,7 +212,8 @@ RegisterNetEvent('onResourceStop', function(resource)
 end)
 
 local function getCurrentComponent()
-    local closestPoint = lib.points.closest()
+    local closestPoint = lib.points.getClosestPoint()
+
     if closestPoint and closestPoint.currentDistance < 1 then
         return {
             property = closestPoint.property,
