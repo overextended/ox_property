@@ -120,7 +120,7 @@ AddEventHandler('onResourceStart', function(resource)
                 local stashName = ('%s:%s'):format(k, i)
                 stashes[stashName] = true
 
-                exports.ox_inventory:RegisterStash(stashName, ('%s - %s'):format(v.label, component.name), component.slots or 50, component.maxWeight or 50000, not component.shared == true, nil, component.coords)
+                exports.ox_inventory:RegisterStash(stashName, ('%s - %s'):format(v.label, component.name), component.slots or 50, component.maxWeight or 1000000, not component.shared == true, nil, component.coords)
             end
         end
     end
