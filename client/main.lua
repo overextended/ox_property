@@ -128,7 +128,9 @@ local function loadProperty(resource, file)
         component.componentId = i
 
         if component.point then
-            components[i] = lib.points.new(component.point, 16, {
+            components[i] = lib.points.new({
+                coords = component.point,
+                distance = 16,
                 property = name,
                 componentId = i,
                 type = component.type,
