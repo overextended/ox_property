@@ -1,20 +1,18 @@
 Properties = {}
 PropertyVariables = {}
-CurrentZone = nil
-
-local componentActions = {
-    stash = function(component)
-        exports.ox_inventory:openInventory('stash', component.name)
-    end
-}
-
 Permissions = {}
+CurrentZone = nil
+local componentActions = {}
 
 function RegisterComponentAction(componentType, action, actionPermissions)
     componentActions[componentType] = action
     Permissions[componentType] = actionPermissions
 end
 exports('registerComponentAction', RegisterComponentAction)
+
+RegisterComponentAction('stash', function(component)
+    return exports.ox_inventory:openInventory('stash', component.name)
+end, {'All access'})
 
 local menus = {
     contextMenu = {
