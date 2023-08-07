@@ -1,13 +1,23 @@
+---@type table<string, OxPropertyObject>
 Properties = {}
 
+---@param property string
+---@param componentId integer
+---@return OxPropertyObject | OxPropertyComponent
 exports('getPropertyData', function(property, componentId)
     return componentId and Properties[property].components[componentId] or Properties[property]
 end)
 
+---@type table<string, OxPropertyComponent>
 local zones = {}
 
+---@param player integer | OxPlayer
+---@param propertyName string
+---@param componentId integer
+---@param componentType string
+---@return boolean | integer, string?
 function IsPermitted(player, propertyName, componentId, componentType)
-    player = type(player) == 'number' and Ox.GetPlayer(player) or player
+    player = type(player) == 'number' and Ox.GetPlayer(player) or player --[[@as OxPlayer]]
     local property = Properties[propertyName]
     local component = property.components[componentId]
 
@@ -47,6 +57,7 @@ function IsPermitted(player, propertyName, componentId, componentType)
 end
 exports('isPermitted', IsPermitted)
 
+---@type table<string, true>
 local stashes = {}
 local stashHook
 
@@ -64,7 +75,7 @@ local function resetStashHook()
     stashHook = exports.ox_inventory:registerHook('openInventory', function(payload)
         local property, componentId = string.strsplit(':', payload.inventoryId)
 
-        if not IsPermitted(payload.source, property, tonumber(componentId), 'stash') then
+        if not IsPermitted(payload.source, property, tonumber(componentId) --[[@as integer]], 'stash') then
             return false
         end
     end, {
@@ -72,6 +83,7 @@ local function resetStashHook()
     })
 end
 
+---@type table<string, string[]>
 local propertyResources = {}
 local defaultOwner = nil
 local defaultOwnerName
@@ -145,6 +157,7 @@ AddEventHandler('onResourceStart', function(resource)
 
     for k, v in pairs(data) do
         local variables = existingProperties[k]
+
         if variables then
             variables.name = k
             variables.permissions = json.decode(variables.permissions)
@@ -188,9 +201,14 @@ end)
 
 local invoiceThreshold = 1000
 
+---@param source number
+---@param msg string
+---@param data { amount: number, from: OxPropertyTransactionParty, to: OxPropertyTransactionParty }
+---@return boolean, string?
 function Transaction(source, msg, data)
     local available
     local amount, from, to in data
+
     if from then
         local accounts = exports.pefcl:getAccountsByIdentifier(source, from.identifier).data
         for i = 1, #accounts do

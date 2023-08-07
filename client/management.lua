@@ -1,5 +1,8 @@
 local permissionData
 
+---@param selected number
+---@param secondary number
+---@param args any
 local function updatePermissionData(selected, secondary, args)
     permissionData[args.section] = permissionData[args.section] or {}
     if args.section == 'players' then
@@ -11,6 +14,7 @@ local function updatePermissionData(selected, secondary, args)
     end
 end
 
+---@param keyPressed 'Backspace' | 'Escape'
 local function onClose(keyPressed)
     if keyPressed == 'Backspace' then
         lib.showMenu('component_menu')

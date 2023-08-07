@@ -1,3 +1,5 @@
+---@param player OxPlayer
+---@return OxPropertyManagementData
 local function getManagementData(player)
     local data = {
         groups = MySQL.query.await('SELECT name, label, grades FROM ox_groups'),
@@ -30,6 +32,7 @@ local function getManagementData(player)
     return data
 end
 
+---@param property OxPropertyObject
 local function updateProperty(property)
     Properties[property.name] = property
     GlobalState[('property.%s'):format(property.name)] = {
@@ -43,6 +46,9 @@ local function updateProperty(property)
     }
 end
 
+---@param property OxPropertyObject
+---@param data { level?: integer, permissions?: table }
+---@return boolean, string
 local function updatePermissionLevel(property, data)
     local level = property.permissions[data.level] or {}
 
@@ -73,6 +79,9 @@ local function updatePermissionLevel(property, data)
     return true, 'permission_level_updated'
 end
 
+---@param property OxPropertyObject
+---@param level integer
+---@return boolean, string
 local function deletePermissionLevel(property, level)
     if level == 1 then
         return false, 'action_not_allowed'
@@ -87,6 +96,9 @@ local function deletePermissionLevel(property, level)
     return true, 'permission_level_deleted'
 end
 
+---@param property OxPropertyObject
+---@param data { owner?: integer, group?: string}
+---@return boolean, string
 local function setPropertyValue(property, data)
     if data.owner then
         local owner = data.owner ~= 0 and data.owner or nil
@@ -117,6 +129,10 @@ local function setPropertyValue(property, data)
     return true, 'property_value_set'
 end
 
+---@param source integer
+---@param action string
+---@param data { property: string, componentId: integer, level?: integer, permissions?: table, owner?: integer, group?: string }
+---@return boolean | OxPropertyManagementData, string | nil
 lib.callback.register('ox_property:management', function(source, action, data)
     local permitted, msg = IsPermitted(source, data.property, data.componentId, 'management')
 
@@ -125,7 +141,7 @@ lib.callback.register('ox_property:management', function(source, action, data)
     end
 
     if action == 'get_data' then
-        return getManagementData(Ox.GetPlayer(source))
+        return getManagementData(Ox.GetPlayer(source) --[[@as OxPlayer]])
     end
 
     local property = Properties[data.property]

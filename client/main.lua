@@ -1,9 +1,16 @@
+---@type OxPropertyObject[]
 Properties = {}
+---@type OxPropertyVariables[]
 PropertyVariables = {}
+---@type table<string, string[]>
 Permissions = {}
 CurrentZone = nil
+---@type table<string, function>
 local componentActions = {}
 
+---@param componentType string
+---@param action function
+---@param actionPermissions string[]
 function RegisterComponentAction(componentType, action, actionPermissions)
     componentActions[componentType] = action
     Permissions[componentType] = actionPermissions
@@ -24,6 +31,8 @@ local menus = {
     }
 }
 
+---@param menu string | string[]
+---@param menuType string
 function RegisterMenu(menu, menuType)
     if type(menu) == 'string' then
         menus[menuType][menu] = true
@@ -35,6 +44,8 @@ function RegisterMenu(menu, menuType)
 end
 exports('registerMenu', RegisterMenu)
 
+---@param blip integer
+---@param property string
 local function setBlipVariables(blip, property)
     local variables = PropertyVariables[property]
     SetBlipColour(blip, variables.colour)
@@ -45,9 +56,10 @@ local function setBlipVariables(blip, property)
     end
 end
 
+---@type table<string, OxPropertyComponent>
 local componentRegistry = {}
 
-AddStateBagChangeHandler(nil, 'global', function(bagName, key, value, reserved, replicated)
+AddStateBagChangeHandler("", 'global', function(bagName, key, value, reserved, replicated)
     local property = key:match('property%.([%w_]+)')
     if property then
         PropertyVariables[property] = value
@@ -68,10 +80,13 @@ end
 AddEventHandler('ox:playerLoaded', refreshGroups)
 RegisterNetEvent('ox:setGroup', refreshGroups)
 
+---@param point CPoint
 local function nearbyPoint(point)
+    ---@diagnostic disable-next-line: param-type-mismatch
     DrawMarker(2, point.coords.x, point.coords.y, point.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.15, 30, 30, 150, 222, false, false, 0, true, false, false, false)
 end
 
+---@param self CZone
 local function onEnter(self)
     CurrentZone = self
     lib.notify({
@@ -82,6 +97,7 @@ local function onEnter(self)
     })
 end
 
+---@param self CZone
 local function onExit(self)
     if CurrentZone?.property == self.property and CurrentZone?.componentId == self.componentId then
         CurrentZone = nil
@@ -91,7 +107,10 @@ local function onExit(self)
 end
 
 local propertyRegistry = {}
+local glm = require 'glm'
 
+---@param resource string
+---@param file string
 local function loadProperty(resource, file)
     local name = file:match('([%w_]+)%..+$')
     propertyRegistry[resource][#propertyRegistry[resource] + 1] = name
@@ -187,6 +206,7 @@ AddEventHandler('onClientResourceStart', function(resource)
     end
 end)
 
+---@param name string
 local function unloadProperty(name)
     local propertyComponents = componentRegistry[name]
 
@@ -215,6 +235,7 @@ RegisterNetEvent('onResourceStop', function(resource)
     propertyRegistry[resource] = nil
 end)
 
+---@return { property: string, componentId: integer, name: string, type: string }
 local function getCurrentComponent()
     local closestPoint = lib.points.getClosestPoint()
 
@@ -249,6 +270,9 @@ exports('getPropertyData', function(property, componentId)
     return Properties[property].components[componentId]
 end)
 
+---@param property? string
+---@param componentId? integer
+---@return false | integer
 local function isPermitted(property, componentId)
     if not property or not componentId then
         local component = getCurrentComponent()
