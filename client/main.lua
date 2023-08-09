@@ -56,14 +56,14 @@ local function setBlipVariables(blip, property)
     end
 end
 
----@type table<string, OxPropertyComponent>
-local componentRegistry = {}
+---@type table<string, integer>
+local blipRegistry = {}
 
 AddStateBagChangeHandler("", 'global', function(bagName, key, value, reserved, replicated)
     local property = key:match('property%.([%w_]+)')
     if property then
         PropertyVariables[property] = value
-        local blip = componentRegistry[property]?.blip
+        local blip = blipRegistry[property]
 
         if blip then
             setBlipVariables(blip, property)
@@ -72,8 +72,8 @@ AddStateBagChangeHandler("", 'global', function(bagName, key, value, reserved, r
 end)
 
 local function refreshGroups()
-    for name, data in pairs(componentRegistry) do
-        setBlipVariables(data.blip, name)
+    for name, blip in pairs(blipRegistry) do
+        setBlipVariables(blip, name)
     end
 end
 
@@ -126,9 +126,8 @@ local function loadProperty(resource, file)
     PropertyVariables[name] = GlobalState[('property.%s'):format(name)]
 
     if data.blip and data.sprite then
-        local x, y, z in data.blip
-        local blip = AddBlipForCoord(x, y, z)
-        components.blip = blip
+        local blip = AddBlipForCoord(data.blip.x, data.blip.y, 0)
+        blipRegistry[name] = blip
 
         SetBlipSprite(blip, data.sprite)
 
@@ -211,15 +210,17 @@ local function unloadProperty(name)
     local propertyComponents = componentRegistry[name]
 
     if propertyComponents then
-        if propertyComponents.blip then
-            RemoveBlip(propertyComponents.blip)
-        end
-
         for i = 1, #propertyComponents do
             propertyComponents[i]:remove()
         end
 
         componentRegistry[name] = nil
+    end
+
+    local blip = blipRegistry[name]
+
+    if blip then
+        RemoveBlip(blip)
     end
 
     Properties[name] = nil
