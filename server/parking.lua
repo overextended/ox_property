@@ -52,7 +52,7 @@ exports('clearVehicleOfPassengers', clearVehicleOfPassengers)
 ---@param player integer | OxPlayer
 ---@param component OxPropertyComponent
 ---@param properties VehicleProperties
----@return boolean, string
+---@return boolean response, string msg
 local function storeVehicle(player, component, properties)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player --[[@as OxPlayer]]
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
@@ -79,7 +79,7 @@ exports('storeVehicle', storeVehicle)
 ---@param player integer | OxPlayer
 ---@param component OxPropertyComponent
 ---@param id integer
----@return boolean, string
+---@return boolean response, string msg
 local function retrieveVehicle(player, component, id)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player --[[@as OxPlayer]]
     local vehicle = MySQL.single.await('SELECT `id`, `model`, `stored` FROM vehicles WHERE id = ? AND owner = ?', {id, player.charid})
@@ -108,7 +108,7 @@ exports('retrieveVehicle', retrieveVehicle)
 ---@param property OxPropertyObject
 ---@param component OxPropertyComponent
 ---@param id integer
----@return boolean, string?
+---@return boolean response, string? msg
 local function moveVehicle(player, property, component, id)
     local vehicles = Ox.GetVehicles()
     local vehicle, recover, db
@@ -177,7 +177,7 @@ end
 ---@param source integer
 ---@param action string
 ---@param data { property: string, componentId: integer, properties?: VehicleProperties, id?: integer }
----@return boolean | { id: integer, plate: string, stored: string, model: string }[], string?
+---@return boolean | { id: integer, plate: string, stored: string, model: string }[] response, string? msg
 lib.callback.register('ox_property:parking', function(source, action, data)
     local player = Ox.GetPlayer(source) --[[@as OxPlayer]]
     local permitted, msg = IsPermitted(player, data.property, data.componentId, 'parking')

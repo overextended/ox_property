@@ -1,21 +1,18 @@
 ---@type table<string, OxPropertyObject>
 Properties = {}
 
----@param property string
----@param componentId integer
----@return OxPropertyObject | OxPropertyComponent
 exports('getPropertyData', function(property, componentId)
     return componentId and Properties[property].components[componentId] or Properties[property]
 end)
 
----@type table<string, OxPropertyComponent>
+---@type table<string, CZone[]>
 local zones = {}
 
 ---@param player integer | OxPlayer
 ---@param propertyName string
 ---@param componentId integer
 ---@param componentType string
----@return boolean | integer, string?
+---@return false | integer response, string? msg
 function IsPermitted(player, propertyName, componentId, componentType)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player --[[@as OxPlayer]]
     local property = Properties[propertyName]
@@ -103,7 +100,7 @@ AddEventHandler('onResourceStart', function(resource)
         local func, err = load(LoadResourceFile(resource, file), ('@@%s%s'):format(resource, file), 't', Shared.DATA_ENVIRONMENT)
         assert(func, err == nil or ('\n^1%s^7'):format(err))
         local propertyName = file:match('([%w_]+)%..+$')
-        data[propertyName] = func()
+        data[propertyName] = func() --[[@as OxPropertyObject]]
 
         propertyResources[resource][#propertyResources[resource] + 1] = propertyName
     end
@@ -204,7 +201,7 @@ local invoiceThreshold = 1000
 ---@param source number
 ---@param msg string
 ---@param data { amount: number, from: OxPropertyTransactionParty, to: OxPropertyTransactionParty }
----@return boolean, string?
+---@return boolean response, string? msg
 function Transaction(source, msg, data)
     local available
     local amount, from, to in data

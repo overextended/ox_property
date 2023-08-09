@@ -106,7 +106,10 @@ local function onExit(self)
     end
 end
 
+---@type table<string, string[]>
 local propertyRegistry = {}
+---@type table<string, (CZone | CPoint)[]>
+local componentRegistry = {}
 local glm = require 'glm'
 
 ---@param resource string
@@ -118,7 +121,7 @@ local function loadProperty(resource, file)
     local func, err = load(LoadResourceFile(resource, file), ('@@%s%s'):format(resource, file), 't', Shared.DATA_ENVIRONMENT)
     assert(func, err == nil or ('\n^1%s^7'):format(err))
 
-    local data = func()
+    local data = func() --[[@as OxPropertyObject]]
     local components = {}
 
     Properties[name] = data
@@ -236,7 +239,7 @@ RegisterNetEvent('onResourceStop', function(resource)
     propertyRegistry[resource] = nil
 end)
 
----@return { property: string, componentId: integer, name: string, type: string }
+---@return { property: string, componentId: integer, name: string, type: string }? component
 local function getCurrentComponent()
     local closestPoint = lib.points.getClosestPoint()
 
@@ -273,7 +276,7 @@ end)
 
 ---@param property? string
 ---@param componentId? integer
----@return false | integer
+---@return false | integer response
 local function isPermitted(property, componentId)
     if not property or not componentId then
         local component = getCurrentComponent()

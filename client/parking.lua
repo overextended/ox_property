@@ -9,7 +9,7 @@ local vehicleNames = setmetatable({}, {
 	end
 })
 
----@param data { component: OxPropertyComponent, componentOnly: boolean, vehicles: { id: integer, plate: string, stored: string, model: string, currentComponent: boolean }[] }
+---@param data { component: OxPropertyComponent, componentOnly: boolean?, vehicles: { id: integer, plate: string, stored: string, model: string, currentComponent: boolean }[] }
 local function vehicleList(data)
     local options = {}
 
@@ -154,7 +154,7 @@ RegisterMenu('vehicle_list', 'contextMenu')
 
 ---@param point vector3
 ---@param entities integer[]
----@return boolean
+---@return boolean response
 local function isPointClear(point, entities)
     for i = 1, #entities do
         local entity = entities[i]
@@ -167,7 +167,7 @@ end
 
 ---@param spawns vector4[]
 ---@param entities integer[]
----@return boolean | { coords: vector3, heading: number, slot: integer, rotate: boolean }
+---@return false | { coords: vector3, heading: number, slot: integer, rotate: boolean } response
 local function findClearSpawn(spawns, entities)
     local len = #spawns
     while next(spawns) do
@@ -189,6 +189,7 @@ local function findClearSpawn(spawns, entities)
     return false
 end
 
+---@return false | { coords: vector3, heading: number, slot: integer, rotate: boolean } response
 lib.callback.register('ox_property:findClearSpawn', function()
     if not CurrentZone then
         return false

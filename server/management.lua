@@ -1,5 +1,5 @@
 ---@param player OxPlayer
----@return OxPropertyManagementData
+---@return OxPropertyManagementData data
 local function getManagementData(player)
     local data = {
         groups = MySQL.query.await('SELECT name, label, grades FROM ox_groups'),
@@ -48,7 +48,7 @@ end
 
 ---@param property OxPropertyObject
 ---@param data { level?: integer, permissions?: table }
----@return boolean, string
+---@return boolean response, string msg
 local function updatePermissionLevel(property, data)
     local level = property.permissions[data.level] or {}
 
@@ -81,7 +81,7 @@ end
 
 ---@param property OxPropertyObject
 ---@param level integer
----@return boolean, string
+---@return boolean response, string msg
 local function deletePermissionLevel(property, level)
     if level == 1 then
         return false, 'action_not_allowed'
@@ -98,7 +98,7 @@ end
 
 ---@param property OxPropertyObject
 ---@param data { owner?: integer, group?: string}
----@return boolean, string
+---@return boolean response, string msg
 local function setPropertyValue(property, data)
     if data.owner then
         local owner = data.owner ~= 0 and data.owner or nil
@@ -132,7 +132,7 @@ end
 ---@param source integer
 ---@param action string
 ---@param data { property: string, componentId: integer, level?: integer, permissions?: table, owner?: integer, group?: string }
----@return boolean | OxPropertyManagementData, string | nil
+---@return boolean | OxPropertyManagementData response, string | nil msg
 lib.callback.register('ox_property:management', function(source, action, data)
     local permitted, msg = IsPermitted(source, data.property, data.componentId, 'management')
 
