@@ -15,6 +15,20 @@ local vehicleData = setmetatable({}, {
 	end
 })
 
+---@param player OxPlayer
+---@return { id: integer, plate: string, owner: integer, group: string, stored: string, model: string }[] response
+local function getVehicles(player)
+    local groupTable = player:getGroups()
+
+    local groups = {}
+
+    for group in pairs(groupTable) do
+        groups[#groups + 1] = group
+    end
+
+    return MySQL.query.await('SELECT `id`, `plate`, `owner`, `group`, `stored`, `model` FROM `vehicles` WHERE `owner` = ? OR `group` IN (?)', {player.charid, groups})
+end
+
 ---@param data { entity: integer, model: string, seats?: integer }
 local function clearVehicleOfPassengers(data)
     local entity, model, seats in data
@@ -177,7 +191,7 @@ end
 ---@param source integer
 ---@param action string
 ---@param data { property: string, componentId: integer, properties?: VehicleProperties, id?: integer }
----@return boolean | { id: integer, plate: string, stored: string, model: string }[] response, string? msg
+---@return boolean | { id: integer, plate: string, owner: integer, group: string, stored: string, model: string }[] response, string? msg
 lib.callback.register('ox_property:parking', function(source, action, data)
     local player = Ox.GetPlayer(source) --[[@as OxPlayer]]
     local permitted, msg = IsPermitted(player, data.property, data.componentId, 'parking')
@@ -187,7 +201,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     end
 
     if action == 'get_vehicles' then
-        return MySQL.query.await('SELECT `id`, `plate`, `stored`, `model` FROM vehicles WHERE owner = ?', {player.charid})
+        return getVehicles(player)
     end
 
     local property = Properties[data.property]

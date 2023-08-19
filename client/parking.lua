@@ -9,7 +9,7 @@ local vehicleNames = setmetatable({}, {
 	end
 })
 
----@param data { component: OxPropertyComponent, componentOnly: boolean?, vehicles: { id: integer, plate: string, stored: string, model: string, currentComponent: boolean }[] }
+---@param data { component: OxPropertyComponent, componentOnly: boolean?, vehicles: { id: integer, plate: string, owner: integer, group: string, stored: string, model: string, currentComponent: boolean }[] }
 local function vehicleList(data)
     local options = {}
 
