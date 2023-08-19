@@ -4,6 +4,12 @@ return {
     blip = vec(222.6, -790.8),
     components = {
         {
+            name = 'Management',
+            type = 'management',
+            sphere = vec3(214.0, -809.0, 31.0),
+            radius = 2.0,
+        },
+        {
             name = 'Lower Parking',
             type = 'parking',
             thickness = 4.0,
