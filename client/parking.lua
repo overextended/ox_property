@@ -18,26 +18,28 @@ local function vehicleList(data)
         vehicle.name = vehicleNames[vehicle.model]
 
         local location = 'Unknown'
+        local action = 'Recover'
         local stored = vehicle.stored and vehicle.stored:find(':')
 
         if stored then
             if data.componentOnly or vehicle.currentComponent then
-                location = 'Right here'
+                location = 'Current location'
+                action = 'Retrieve'
             else
                 local propertyName, componentId = string.strsplit(':', vehicle.stored)
                 local property = Properties[propertyName]
 
                 if property then
                     location = ('%s:%s'):format(property.label, componentId)
+                    action = 'Move'
                 end
             end
         end
 
-        local action = location == 'Right here' and 'Retrieve' or stored and 'Move' or 'Recover'
-
         options[('%s - %s'):format(vehicle.name, vehicle.plate)] = {
             metadata = {
                 ['Action'] = action,
+                ['Group'] = vehicle.group and GlobalState[('group.%s'):format(vehicle.group)].label,
                 ['Location'] = location
             },
             onSelect = function(args)
