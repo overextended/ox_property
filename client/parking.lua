@@ -28,9 +28,10 @@ local function vehicleList(data)
             else
                 local propertyName, componentId = string.strsplit(':', vehicle.stored)
                 local property = Properties[propertyName]
+                local component = property and property.components[tonumber(componentId)]
 
-                if property then
-                    location = ('%s:%s'):format(property.label, componentId)
+                if property and component then
+                    location = ('%s - %s'):format(property.label, component.name)
                     action = 'Move'
                 end
             end
