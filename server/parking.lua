@@ -16,8 +16,8 @@ local vehicleData = setmetatable({}, {
 })
 
 ---@param player OxPlayer
----@return { id: integer, plate: string, owner: integer, group: string, stored: string, model: string }[] response
-local function getVehicles(player)
+---@return string[]
+local function getPlayerGroupsArray(player)
     local groupTable = player:getGroups()
 
     local groups = {}
@@ -26,7 +26,7 @@ local function getVehicles(player)
         groups[#groups + 1] = group
     end
 
-    return MySQL.query.await('SELECT `id`, `plate`, `owner`, `group`, `stored`, `model` FROM `vehicles` WHERE `owner` = ? OR `group` IN (?)', {player.charid, groups})
+    return groups
 end
 
 ---@param data { entity: integer, model: string, seats?: integer }
@@ -72,7 +72,7 @@ local function storeVehicle(player, component, properties)
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
     if not vehicle then
         return false, 'vehicle_not_found'
-    elseif player.charid ~= vehicle.owner then
+    elseif player.charid ~= vehicle.owner and (vehicle.group and not player.hasGroup(vehicle.group)) then
         return false, 'not_vehicle_owner'
     end
 
@@ -96,7 +96,7 @@ exports('storeVehicle', storeVehicle)
 ---@return boolean response, string msg
 local function retrieveVehicle(player, component, id)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player --[[@as OxPlayer]]
-    local vehicle = MySQL.single.await('SELECT `id`, `model`, `stored` FROM vehicles WHERE id = ? AND owner = ?', {id, player.charid})
+    local vehicle = MySQL.single.await('SELECT `model`, `stored` FROM `vehicles` WHERE `id` = ? AND (`owner` = ? OR `group` IN (?))', {id, player.charid, getPlayerGroupsArray(player)})
 
     if not vehicle then
         return false, 'vehicle_not_found'
@@ -112,13 +112,13 @@ local function retrieveVehicle(player, component, id)
         return false, 'vehicle_requirements_not_met'
     end
 
-    Ox.CreateVehicle(vehicle.id, spawn.coords, spawn.heading)
+    Ox.CreateVehicle(id, spawn.coords, spawn.heading)
 
     return true, 'vehicle_retrieved'
 end
 exports('retrieveVehicle', retrieveVehicle)
 
----@param player integer | OxPlayer
+---@param player OxPlayer
 ---@param property OxPropertyObject
 ---@param component OxPropertyComponent
 ---@param id integer
@@ -148,7 +148,7 @@ local function moveVehicle(player, property, component, id)
     end
 
     if not vehicle then
-        vehicle = MySQL.single.await('SELECT `model`, `stored` FROM vehicles WHERE id = ? AND owner = ?', {id, player.charid})
+        vehicle = MySQL.single.await('SELECT `model`, `stored` FROM `vehicles` WHERE `id` = ? AND (`owner` = ? OR `group` IN (?))', {id, player.charid, getPlayerGroupsArray(player)})
 
         if not vehicle then
             return false, 'vehicle_not_found'
@@ -201,7 +201,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     end
 
     if action == 'get_vehicles' then
-        return getVehicles(player)
+        return MySQL.query.await('SELECT `id`, `plate`, `owner`, `group`, `stored`, `model` FROM `vehicles` WHERE `owner` = ? OR `group` IN (?)', {player.charid, getPlayerGroupsArray(player)})
     end
 
     local property = Properties[data.property]
