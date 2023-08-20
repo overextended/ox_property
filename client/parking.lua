@@ -14,6 +14,7 @@ local function manageVehicle(data)
     local options = {
         {
             title = ('%s - %s'):format(data.vehicle.name, data.vehicle.plate),
+            description = data.vehicle.label,
             metadata = {
                 ['Group'] = data.vehicle.group and GlobalState[('group.%s'):format(data.vehicle.group)].label,
                 ['Location'] = data.vehicle.location
@@ -104,6 +105,7 @@ local function vehicleList(data)
         local vehicle = data.vehicles[i]
 
         options[('%s - %s'):format(vehicle.name, vehicle.plate)] = {
+            description = vehicle.label,
             metadata = {
                 ['Action'] = vehicle.action,
                 ['Group'] = vehicle.group and GlobalState[('group.%s'):format(vehicle.group)].label,
