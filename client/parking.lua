@@ -9,53 +9,111 @@ local vehicleNames = setmetatable({}, {
 	end
 })
 
----@param data { component: OxPropertyComponent, componentOnly: boolean?, vehicles: { id: integer, plate: string, owner: integer, group: string, stored: string, model: string, currentComponent: boolean }[] }
+---@param data { component: OxPropertyComponent, vehicle: { id: integer, plate: string, owner: integer, group: string, stored: string, model: string, name: string, action: string, location: string, label: string } }
+local function manageVehicle(data)
+    local options = {
+        {
+            title = ('%s - %s'):format(data.vehicle.name, data.vehicle.plate),
+            metadata = {
+                ['Group'] = data.vehicle.group and GlobalState[('group.%s'):format(data.vehicle.group)].label,
+                ['Location'] = data.vehicle.location
+            }
+        },
+        {
+            title = 'Update Values',
+            disabled = data.vehicle.owner ~= player.charid,
+            onSelect = function(args)
+                local groupTable = player.groups
+                local groups = {{value = 'none', label = 'None'}}
+
+                for group in pairs(groupTable) do
+                    groups[#groups + 1] = { value = group, label = GlobalState[('group.%s'):format(group)].label}
+                end
+
+                local options = {
+                    {
+                        type = 'input',
+                        label = 'Label',
+                        default = data.vehicle.label
+                    },
+                    {
+                        type = 'select',
+                        label = 'Group',
+                        default = data.vehicle.group,
+                        options = groups
+                    }
+                }
+
+                local input = lib.inputDialog('Update Vehicle Values', options)
+
+                if input then
+                    if not data.vehicle.label and input[1] == "" then input[1] = nil end
+
+                    for k, v in pairs(input) do
+                        if options[k].default == v then
+                            input[k] = nil
+                        end
+                    end
+
+                    if next(input) then
+                        local response, msg = lib.callback.await('ox_property:parking', 100, 'set_vehicle_values', {
+                            property = data.component.property,
+                            componentId = data.component.componentId,
+                            id = data.vehicle.id,
+                            values = {label = input[1], group = input[2]}
+                        })
+
+                        if msg then
+                            lib.notify({title = msg, type = response and 'success' or 'error'})
+                        end
+                    end
+                end
+            end,
+        },
+        {
+            title = 'Retrieve',
+            onSelect = function(args)
+                local response, msg = lib.callback.await('ox_property:parking', 100, 'retrieve_vehicle', {
+                    property = data.component.property,
+                    componentId = data.component.componentId,
+                    id = data.vehicle.id
+                })
+
+                if msg then
+                    lib.notify({title = msg, type = response and 'success' or 'error'})
+                end
+            end,
+        },
+    }
+
+    lib.registerContext({
+        id = 'manage_vehicle',
+        title = 'Manage Vehicle',
+        menu = 'vehicle_list',
+        options = options
+    })
+
+    lib.showContext('manage_vehicle')
+end
+
+---@param data { component: OxPropertyComponent, componentOnly: boolean?, vehicles: { id: integer, plate: string, owner: integer, group: string, stored: string, model: string, name: string, action: string, location: string, label: string }[] }
 local function vehicleList(data)
     local options = {}
 
     for i = 1, #data.vehicles do
         local vehicle = data.vehicles[i]
-        vehicle.name = vehicleNames[vehicle.model]
-
-        local location = 'Unknown'
-        local action = 'Recover'
-        local stored = vehicle.stored and vehicle.stored:find(':')
-
-        if stored then
-            if data.componentOnly or vehicle.currentComponent then
-                location = 'Current location'
-                action = 'Retrieve'
-            else
-                local propertyName, componentId = string.strsplit(':', vehicle.stored)
-                local property = Properties[propertyName]
-                local component = property and property.components[tonumber(componentId)]
-
-                if property and component then
-                    location = ('%s - %s'):format(property.label, component.name)
-                    action = 'Move'
-                end
-            end
-        end
 
         options[('%s - %s'):format(vehicle.name, vehicle.plate)] = {
             metadata = {
-                ['Action'] = action,
+                ['Action'] = vehicle.action,
                 ['Group'] = vehicle.group and GlobalState[('group.%s'):format(vehicle.group)].label,
-                ['Location'] = location
+                ['Location'] = vehicle.location
             },
             onSelect = function(args)
-                if args.action == 'Retrieve' then
-                    local response, msg = lib.callback.await('ox_property:parking', 100, 'retrieve_vehicle', {
-                        property = data.component.property,
-                        componentId = data.component.componentId,
-                        id = args.id
-                    })
-
-                    if msg then
-                        lib.notify({title = msg, type = response and 'success' or 'error'})
-                    end
+                if args.action == 'Manage' then
+                    manageVehicle({component = data.component, vehicle = vehicle})
                 else
-                    local response, msg = lib.callback.await('ox_property:parking', 100, 'move_vehicle', {
+                    local response, msg = lib.callback.await('ox_property:parking', 100, args.action == 'Retrieve' and 'retrieve_vehicle' or 'move_vehicle', {
                         property = data.component.property,
                         componentId = data.component.componentId,
                         id = args.id
@@ -68,7 +126,7 @@ local function vehicleList(data)
             end,
             args = {
                 id = vehicle.id,
-                action = action
+                action = vehicle.action
             }
         }
     end
@@ -121,9 +179,25 @@ RegisterComponentAction('parking', function(component)
     local currentComponent = ('%s:%s'):format(component.property, component.componentId)
     for i = 1, len do
         local vehicle = vehicles[i]
-        if vehicle.stored == currentComponent then
-            componentVehicles[#componentVehicles + 1] = vehicle
-            vehicle.currentComponent = true
+        vehicle.name = vehicleNames[vehicle.model]
+        vehicle.location = 'Unknown'
+        vehicle.action = 'Recover'
+
+        if vehicle.stored and vehicle.stored:find(':') then
+            if vehicle.stored == currentComponent then
+                vehicle.location = 'Current location'
+                vehicle.action = vehicle.owner == player.charid and 'Manage' or 'Retrieve'
+                componentVehicles[#componentVehicles + 1] = vehicle
+            else
+                local propertyName, componentId = string.strsplit(':', vehicle.stored)
+                local property = Properties[propertyName]
+                local component = property and property.components[tonumber(componentId)]
+
+                if property and component then
+                    vehicle.location = ('%s - %s'):format(property.label, component.name)
+                    vehicle.action = 'Move'
+                end
+            end
         end
     end
 
@@ -153,7 +227,7 @@ RegisterComponentAction('parking', function(component)
     return {options = options}, 'contextMenu'
 end, {'All access'})
 
-RegisterMenu('vehicle_list', 'contextMenu')
+RegisterMenu({'vehicle_list', 'manage_vehicle'}, 'contextMenu')
 
 ---@param point vector3
 ---@param entities integer[]

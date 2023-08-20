@@ -29,6 +29,33 @@ local function getPlayerGroupsArray(player)
     return groups
 end
 
+---@param player integer | OxPlayer
+---@param data { property: string, componentId: integer, id?: integer, values?: table<string, string> }
+---@return boolean response, string msg
+local function setVehicleValues(player, data)
+    player = type(player) == 'number' and Ox.GetPlayer(player) or player --[[@as OxPlayer]]
+    local vehicle = MySQL.single.await('SELECT JSON_VALUE(data, "$.label") AS `label`, `group`, `stored` FROM `vehicles` WHERE `id` = ? AND `owner` = ?', {data.id, player.charid})
+
+    if not vehicle then
+        return false, 'vehicle_not_found'
+    elseif vehicle.stored ~= ('%s:%s'):format(data.property, data.componentId) then
+        return false, 'component_mismatch'
+    end
+
+    for key, value in pairs(data.values) do
+        if vehicle[key] ~= value then
+            if key == 'label' then
+                MySQL.update('UPDATE `vehicles` SET `data` = JSON_SET(`data`, "$.label", ?) WHERE `id` = ? AND `owner` = ?', {value ~= "" and value or nil, data.id, player.charid})
+            elseif key == 'group' then
+                MySQL.update('UPDATE `vehicles` SET `group` = ? WHERE `id` = ? AND `owner` = ?', {value, data.id, player.charid})
+            end
+        end
+    end
+
+    return true, 'vehicle_updated'
+end
+exports('setVehicleValues', setVehicleValues)
+
 ---@param data { entity: integer, model: string, seats?: integer }
 local function clearVehicleOfPassengers(data)
     local entity, model, seats in data
@@ -190,7 +217,7 @@ end
 
 ---@param source integer
 ---@param action string
----@param data { property: string, componentId: integer, properties?: VehicleProperties, id?: integer }
+---@param data { property: string, componentId: integer, properties?: VehicleProperties, id?: integer, values?: table<string, string> }
 ---@return boolean | { id: integer, plate: string, owner: integer, group: string, stored: string, model: string }[] response, string? msg
 lib.callback.register('ox_property:parking', function(source, action, data)
     local player = Ox.GetPlayer(source) --[[@as OxPlayer]]
@@ -201,7 +228,9 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     end
 
     if action == 'get_vehicles' then
-        return MySQL.query.await('SELECT `id`, `plate`, `owner`, `group`, `stored`, `model` FROM `vehicles` WHERE `owner` = ? OR `group` IN (?)', {player.charid, getPlayerGroupsArray(player)})
+        return MySQL.query.await('SELECT `id`, `plate`, `owner`, `group`, `stored`, `model`, JSON_VALUE(data, "$.label") AS `label` FROM `vehicles` WHERE `owner` = ? OR `group` IN (?)', {player.charid, getPlayerGroupsArray(player)})
+    elseif action == 'set_vehicle_values' then
+        return setVehicleValues(player, data)
     end
 
     local property = Properties[data.property]
