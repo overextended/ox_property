@@ -9,7 +9,7 @@ lib.callback.register('ox_property:wardrobe', function(source, action, data)
 
     if action == 'get_outfits' then
         return {
-            personalOutfits = ox_appearance:outfitNames(Ox.GetPlayer(source).charid),
+            personalOutfits = ox_appearance:outfitNames(Ox.GetPlayer(source).charId),
             componentOutfits = ox_appearance:outfitNames(('%s:%s'):format(data.property, data.componentId))
         }
     elseif action == 'save_outfit' then

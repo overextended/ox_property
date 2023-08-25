@@ -51,7 +51,7 @@ local function setBlipVariables(blip, property)
     SetBlipColour(blip, variables.colour)
     SetBlipShrink(blip, true)
 
-    if variables.owner ~= player.charid and not (variables.group and player.groups[variables.group]) then
+    if variables.owner ~= player.charId and not (variables.group and player.groups[variables.group]) then
         SetBlipAsShortRange(blip, true)
     end
 end
@@ -288,7 +288,7 @@ local function isPermitted(property, componentId)
 
     local variables = PropertyVariables[property]
 
-    if player.charid == variables.owner then
+    if player.charId == variables.owner then
         return 1
     end
 
@@ -301,7 +301,7 @@ local function isPermitted(property, componentId)
         for i = 1, #variables.permissions do
             local level = variables.permissions[i]
             local access = i == 1 and 1 or level.components[componentId]
-            if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
+            if access and (level.everyone or level[player.charId] or player.hasGroup(level.groups)) then
                 return access
             end
         end

@@ -22,7 +22,7 @@ local function manageVehicle(data)
         },
         {
             title = 'Update Values',
-            disabled = data.vehicle.owner ~= player.charid,
+            disabled = data.vehicle.owner ~= player.charId,
             onSelect = function(args)
                 local groupTable = player.groups
                 local groups = {{value = 'none', label = 'None'}}
@@ -188,7 +188,7 @@ RegisterComponentAction('parking', function(component)
         if vehicle.stored and vehicle.stored:find(':') then
             if vehicle.stored == currentComponent then
                 vehicle.location = 'Current location'
-                vehicle.action = vehicle.owner == player.charid and 'Manage' or 'Retrieve'
+                vehicle.action = vehicle.owner == player.charId and 'Manage' or 'Retrieve'
                 componentVehicles[#componentVehicles + 1] = vehicle
             else
                 local propertyName, componentId = string.strsplit(':', vehicle.stored)

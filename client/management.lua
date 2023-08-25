@@ -119,11 +119,11 @@ RegisterComponentAction('management', function(component)
 
                         options[#options + 1] = {
                             label = player.name,
-                            checked = permissionLevel[player.charid] or false,
+                            checked = permissionLevel[player.charId] or false,
                             close = false,
                             args = {
                                 section = 'players',
-                                id = player.charid
+                                id = player.charId
                             }
                         }
                     end
@@ -188,7 +188,7 @@ RegisterComponentAction('management', function(component)
                         options[#options + 1] = {
                             label = player.name,
                             args = {
-                                id = player.charid
+                                id = player.charId
                             }
                         }
                     end
@@ -288,7 +288,7 @@ RegisterComponentAction('management', function(component)
                                 close = false,
                                 args = {
                                     section = 'players',
-                                    id = player.charid
+                                    id = player.charId
                                 }
                             }
                         end

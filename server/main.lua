@@ -31,7 +31,7 @@ function IsPermitted(player, propertyName, componentId, componentType)
         return false, 'component_mismatch'
     end
 
-    if player.charid == property.owner then
+    if player.charId == property.owner then
         return 1
     end
 
@@ -44,7 +44,7 @@ function IsPermitted(player, propertyName, componentId, componentType)
             local level = property.permissions[i]
             local access = i == 1 and 1 or level.components[component.componentId]
 
-            if access and (level.everyone or level[player.charid] or player.hasGroup(level.groups)) then
+            if access and (level.everyone or level[player.charId] or player.hasGroup(level.groups)) then
                 return access
             end
         end
@@ -134,9 +134,9 @@ AddEventHandler('onResourceStart', function(resource)
         end
     end
 
-    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstname, " ", characters.lastname) AS ownerName, ox_groups.label as groupName, ox_groups.colour as colour FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charid LEFT JOIN ox_groups ON ox_property.group = ox_groups.name')
+    local result = MySQL.query.await('SELECT ox_property.*, CONCAT(characters.firstName, " ", characters.lastName) AS ownerName, ox_groups.label as groupName, ox_groups.colour as colour FROM ox_property LEFT JOIN characters ON ox_property.owner = characters.charId LEFT JOIN ox_groups ON ox_property.group = ox_groups.name')
 
-    defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {defaultOwner})
+    defaultOwnerName = defaultOwnerName or defaultOwner and MySQL.scalar.await('SELECT CONCAT(characters.firstName, " ", characters.lastName) FROM characters WHERE charId = ?', {defaultOwner})
 
     if defaultGroup and not (defaultGroupName and defaultGroupColour) then
         local label, colour in MySQL.single.await('SELECT label, colour FROM ox_groups WHERE name = ?', {defaultGroup})

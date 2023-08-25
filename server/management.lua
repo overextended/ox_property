@@ -6,7 +6,7 @@ local function getManagementData(player)
         nearbyPlayers = {
             {
                 name = player.name,
-                charid = player.charid
+                charId = player.charId
             }
         }
     }
@@ -24,7 +24,7 @@ local function getManagementData(player)
         if nearbyPlayer.source ~= player.source and #(nearbyPlayer.getCoords() - playerPos) < 10 then
             data.nearbyPlayers[#data.nearbyPlayers + 1] = {
                 name = nearbyPlayer.name,
-                charid = nearbyPlayer.charid
+                charId = nearbyPlayer.charId
             }
         end
     end
@@ -105,7 +105,7 @@ local function setPropertyValue(property, data)
         MySQL.update('UPDATE ox_property SET owner = ? WHERE name = ?', {owner, property.name})
 
         property.owner = owner
-        property.ownerName = owner and MySQL.scalar.await('SELECT CONCAT(characters.firstname, " ", characters.lastname) FROM characters WHERE charid = ?', {owner}) or nil
+        property.ownerName = owner and MySQL.scalar.await('SELECT CONCAT(characters.firstName, " ", characters.lastName) FROM characters WHERE charId = ?', {owner}) or nil
     elseif data.group then
         local group = data.group ~= 0 and data.group or nil
         MySQL.update('UPDATE ox_property SET `group` = ? WHERE name = ?', {group, property.name})

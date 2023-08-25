@@ -30,11 +30,11 @@ local function getPlayerGroupsArray(player)
 end
 
 ---@param player integer | OxPlayer
----@param data { property: string, componentId: integer, id?: integer, values?: table<string, string> }
+---@param data { property: string, componentId: integer, id?: integer, values: table<string, string> }
 ---@return boolean response, string msg
 local function setVehicleValues(player, data)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player --[[@as OxPlayer]]
-    local vehicle = MySQL.single.await('SELECT JSON_VALUE(data, "$.label") AS `label`, `group`, `stored` FROM `vehicles` WHERE `id` = ? AND `owner` = ?', {data.id, player.charid})
+    local vehicle = MySQL.single.await('SELECT JSON_VALUE(data, "$.label") AS `label`, `group`, `stored` FROM `vehicles` WHERE `id` = ? AND `owner` = ?', {data.id, player.charId})
 
     if not vehicle then
         return false, 'vehicle_not_found'
@@ -45,9 +45,9 @@ local function setVehicleValues(player, data)
     for key, value in pairs(data.values) do
         if vehicle[key] ~= value then
             if key == 'label' then
-                MySQL.update('UPDATE `vehicles` SET `data` = JSON_SET(`data`, "$.label", ?) WHERE `id` = ? AND `owner` = ?', {value ~= "" and value or nil, data.id, player.charid})
+                MySQL.update('UPDATE `vehicles` SET `data` = JSON_SET(`data`, "$.label", ?) WHERE `id` = ? AND `owner` = ?', {value ~= "" and value or nil, data.id, player.charId})
             elseif key == 'group' then
-                MySQL.update('UPDATE `vehicles` SET `group` = ? WHERE `id` = ? AND `owner` = ?', {value, data.id, player.charid})
+                MySQL.update('UPDATE `vehicles` SET `group` = ? WHERE `id` = ? AND `owner` = ?', {value, data.id, player.charId})
             end
         end
     end
@@ -99,7 +99,7 @@ local function storeVehicle(player, component, properties)
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
     if not vehicle then
         return false, 'vehicle_not_found'
-    elseif player.charid ~= vehicle.owner and (vehicle.group and not player.hasGroup(vehicle.group)) then
+    elseif player.charId ~= vehicle.owner and (vehicle.group and not player.hasGroup(vehicle.group)) then
         return false, 'not_vehicle_owner'
     end
 
@@ -123,7 +123,7 @@ exports('storeVehicle', storeVehicle)
 ---@return boolean response, string msg
 local function retrieveVehicle(player, component, id)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player --[[@as OxPlayer]]
-    local vehicle = MySQL.single.await('SELECT `model`, `stored` FROM `vehicles` WHERE `id` = ? AND (`owner` = ? OR `group` IN (?))', {id, player.charid, getPlayerGroupsArray(player)})
+    local vehicle = MySQL.single.await('SELECT `model`, `stored` FROM `vehicles` WHERE `id` = ? AND (`owner` = ? OR `group` IN (?))', {id, player.charId, getPlayerGroupsArray(player)})
 
     if not vehicle then
         return false, 'vehicle_not_found'
@@ -175,7 +175,7 @@ local function moveVehicle(player, property, component, id)
     end
 
     if not vehicle then
-        vehicle = MySQL.single.await('SELECT `model`, `stored` FROM `vehicles` WHERE `id` = ? AND (`owner` = ? OR `group` IN (?))', {id, player.charid, getPlayerGroupsArray(player)})
+        vehicle = MySQL.single.await('SELECT `model`, `stored` FROM `vehicles` WHERE `id` = ? AND (`owner` = ? OR `group` IN (?))', {id, player.charId, getPlayerGroupsArray(player)})
 
         if not vehicle then
             return false, 'vehicle_not_found'
@@ -194,10 +194,10 @@ local function moveVehicle(player, property, component, id)
         return false, 'vehicle_requirements_not_met'
     end
 
-    if property.owner ~= player.charid then
+    if property.owner ~= player.charId then
         local response, msg = Transaction(player.source, (recover and '%s Recovery' or '%s Move'):format(vehData.name), {
             amount = recover and 1000 or 500,
-            from = {name = player.name, identifier = player.charid},
+            from = {name = player.name, identifier = player.charId},
             to = {name = property.groupName or property.ownerName, identifier = property.group or property.owner}
         })
 
@@ -228,7 +228,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     end
 
     if action == 'get_vehicles' then
-        return MySQL.query.await('SELECT `id`, `plate`, `owner`, `group`, `stored`, `model`, JSON_VALUE(data, "$.label") AS `label` FROM `vehicles` WHERE `owner` = ? OR `group` IN (?)', {player.charid, getPlayerGroupsArray(player)})
+        return MySQL.query.await('SELECT `id`, `plate`, `owner`, `group`, `stored`, `model`, JSON_VALUE(data, "$.label") AS `label` FROM `vehicles` WHERE `owner` = ? OR `group` IN (?)', {player.charId, getPlayerGroupsArray(player)})
     elseif action == 'set_vehicle_values' then
         return setVehicleValues(player, data)
     end
