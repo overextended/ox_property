@@ -24,6 +24,10 @@ Various public car parks.
 
 ## Built in components
 
+### Blip
+
+Not really a component but a blip can be defined for each property. The blip colour is based on the group colour and properties that a relevant to the player (personally owned or owned by a group they are a member of) will be set as long range and show around the edge of the minimap.
+
 ### Management
 
 One per property, manage permissions and ownership.
@@ -47,3 +51,7 @@ Manage personal outfits and outfits specific to the current location. WIP, will 
 - shops, crafting
 - ox_doorlock integration
 - property info display
+- improve configuration
+- locales
+- admin controls
+- indication for retrieved vehicle
