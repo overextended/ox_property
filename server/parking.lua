@@ -99,7 +99,7 @@ local function storeVehicle(player, component, properties)
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
     if not vehicle then
         return false, 'vehicle_not_found'
-    elseif player.charId ~= vehicle.owner and (vehicle.group and not player.hasGroup(vehicle.group)) then
+    elseif player.charId ~= vehicle.owner or (vehicle.group and not player.hasGroup(vehicle.group)) then
         return false, 'not_vehicle_owner'
     end
 
