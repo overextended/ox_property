@@ -119,7 +119,7 @@ RegisterComponentAction('management', function(component)
 
                         options[#options + 1] = {
                             label = player.name,
-                            checked = permissionLevel[player.charId] or false,
+                            checked = permissionLevel.players and permissionLevel.players[player.charId] or false,
                             close = false,
                             args = {
                                 section = 'players',

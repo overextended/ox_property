@@ -44,7 +44,7 @@ function IsPermitted(player, propertyName, componentId, componentType)
             local level = property.permissions[i]
             local access = i == 1 and 1 or level.components[component.componentId]
 
-            if access and (level.everyone or level[player.charId] or player.hasGroup(level.groups)) then
+            if access and (level.everyone or (level.players and level.players[player.charId]) or player.hasGroup(level.groups)) then
                 return access
             end
         end

@@ -301,7 +301,8 @@ local function isPermitted(property, componentId)
         for i = 1, #variables.permissions do
             local level = variables.permissions[i]
             local access = i == 1 and 1 or level.components[componentId]
-            if access and (level.everyone or level[player.charId] or player.hasGroup(level.groups)) then
+
+            if access and (level.everyone or (level.players and level.players[player.charId]) or player.hasGroup(level.groups)) then
                 return access
             end
         end

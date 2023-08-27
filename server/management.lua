@@ -57,11 +57,7 @@ local function updatePermissionLevel(property, data)
     end
 
     for k, v in pairs(data.permissions) do
-        if k == 'players' then
-            for key, value in pairs(v) do
-                level[key] = value or nil
-            end
-        elseif k == 'everyone' then
+        if k == 'everyone' then
             level.everyone = v or nil
         else
             for key, value in pairs(v) do
@@ -100,7 +96,7 @@ local function deletePermissionLevel(property, level)
 end
 
 ---@param property OxPropertyObject
----@param data { owner?: integer, group?: string}
+---@param data { owner?: integer, group?: string }
 ---@return boolean response, string msg
 local function setPropertyValue(property, data)
     if data.owner then
