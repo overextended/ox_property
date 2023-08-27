@@ -90,7 +90,7 @@ local function deletePermissionLevel(property, level)
         return false, 'action_not_allowed'
     end
 
-    property.permissions[level] = nil
+    table.remove(property.permissions, level)
 
     MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
 
