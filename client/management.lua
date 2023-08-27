@@ -159,7 +159,7 @@ RegisterComponentAction('management', function(component)
                     onClose = onClose
                 },
                 function(selected, scrollIndex, args)
-                    if not scrollIndex then
+                    if next(permissionData) then
                         local response, msg = lib.callback.await('ox_property:management', 100, 'update_permission', {
                             property = component.property,
                             componentId = component.componentId,
