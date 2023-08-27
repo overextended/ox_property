@@ -82,7 +82,7 @@ RegisterComponentAction('management', function(component)
                         options[#options + 1] = {
                             label = component.name,
                             values = {'None', table.unpack(Permissions[component.type])},
-                            defaultIndex = permissionLevel.components[i] and permissionLevel.components[i] + 1 or 1,
+                            defaultIndex = permissionLevel.components and permissionLevel.components[i] and permissionLevel.components[i] + 1 or 1,
                             description = ('Type: %s'):format(component.type:gsub('^%l', string.upper)),
                             close = false,
                             args = {
