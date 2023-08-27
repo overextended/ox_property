@@ -40,6 +40,10 @@ server_scripts {
     'server/wardrobe.lua',
 }
 
+ox_libs {
+    'table'
+}
+
 files {
     '/data/**'
 }

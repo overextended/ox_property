@@ -50,7 +50,7 @@ end
 ---@param data { level?: integer, permissions?: table }
 ---@return boolean response, string msg
 local function updatePermissionLevel(property, data)
-    local level = property.permissions[data.level] or {}
+    local level = property.permissions[data.level] and table.deepclone(property.permissions[data.level]) or {}
 
     if data.level == 1 then
         data.permissions.components = nil
@@ -70,11 +70,14 @@ local function updatePermissionLevel(property, data)
             end
         end
     end
-    property.permissions[data.level] = level
 
-    MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
+    if not table.matches(level, property.permissions[data.level]) then
+        property.permissions[data.level] = level
 
-    updateProperty(property)
+        MySQL.update('UPDATE ox_property SET permissions = ? WHERE name = ?', {json.encode(property.permissions), property.name})
+
+        updateProperty(property)
+    end
 
     return true, 'permission_level_updated'
 end
