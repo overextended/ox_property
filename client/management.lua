@@ -128,14 +128,14 @@ RegisterComponentAction('management', function(component)
                         }
                     end
                 elseif scrollIndex == 3 then
-                    local confirm = lib.alertDialog({
+                    local delete = lib.alertDialog({
                         header = 'Please Confirm',
                         content = 'Are you sure you want to delete this permission level?',
                         centered = true,
                         cancel = true
                     })
 
-                    if confirm then
+                    if delete == 'confirm' then
                         local response, msg = lib.callback.await('ox_property:management', 100, 'delete_permission', {
                             property = component.property,
                             componentId = component.componentId,
