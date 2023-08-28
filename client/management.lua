@@ -182,25 +182,29 @@ RegisterComponentAction('management', function(component)
 
                 if selected == 1 then
                     value = 'owner'
+
                     for i = 1, #displayData.nearbyPlayers do
                         local player = displayData.nearbyPlayers[i]
 
                         options[#options + 1] = {
                             label = player.name,
                             args = {
-                                id = player.charId
+                                id = player.charId,
+                                label = player.name
                             }
                         }
                     end
                 elseif selected == 2 then
                     value = 'group'
+
                     for i = 1, #displayData.groups do
                         local group = displayData.groups[i]
 
                         options[#options + 1] = {
                             label = group.label,
                             args = {
-                                id = group.name
+                                id = group.name,
+                                label = group.label
                             }
                         }
                     end
@@ -213,17 +217,26 @@ RegisterComponentAction('management', function(component)
                     onClose = onClose
                 },
                 function(selected, scrollIndex, args)
-                    local response, msg = lib.callback.await('ox_property:management', 100, 'set_value', {
-                        property = component.property,
-                        componentId = component.componentId,
-                        owner = value == 'owner' and (args?.id or 0),
-                        group = value == 'group' and (args?.id or 0)
+                    local setValue = lib.alertDialog({
+                        header = 'Please Confirm',
+                        content = ('Are you sure you want to set the property %s to %s'):format(value, args.label),
+                        centered = true,
+                        cancel = true
                     })
 
-                    if msg then
-                        lib.notify({title = msg, type = response and 'success' or 'error'})
+                    if setValue == 'confirm' then
+                        local response, msg = lib.callback.await('ox_property:management', 100, 'set_value', {
+                            property = component.property,
+                            componentId = component.componentId,
+                            owner = value == 'owner' and (args?.id or 0),
+                            group = value == 'group' and (args?.id or 0)
+                        })
+
+                        if msg then
+                            lib.notify({title = msg, type = response and 'success' or 'error'})
+                        end
                     end
-            end)
+                end)
 
                 lib.showMenu('set_property_value')
             else
