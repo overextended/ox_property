@@ -1,8 +1,10 @@
+---@param property string
 ---@param player OxPlayer
 ---@return OxPropertyManagementData data
-local function getManagementData(player)
+local function getManagementData(property, player)
     local data = {
         groups = MySQL.query.await('SELECT name, label, grades FROM ox_groups'),
+        doors = MySQL.query.await('SELECT id, name, data FROM ox_doorlock WHERE name LIKE ?', {('%s%%'):format(property)}),
         nearbyPlayers = {
             {
                 name = player.name,
@@ -14,6 +16,11 @@ local function getManagementData(player)
     for i = 1, #data.groups do
         local group = data.groups[i]
         group.grades = json.decode(group.grades)
+    end
+
+    for i = 1, #data.doors do
+        local door = data.doors[i]
+        door.data = json.decode(door.data)
     end
 
     local playerPos = player.getCoords()
@@ -32,6 +39,10 @@ local function getManagementData(player)
     return data
 end
 
+local function sort(a, b)
+    return a > b
+end
+
 ---@param property OxPropertyObject
 local function updateProperty(property)
     Properties[property.name] = property
@@ -44,6 +55,75 @@ local function updateProperty(property)
         groupName = property.groupName,
         colour = property.colour
     }
+
+    local doorIds = MySQL.query.await('SELECT id FROM ox_doorlock WHERE name LIKE ?', {('%s%%'):format(property.name)})
+
+    if not next(doorIds) then return end
+
+    local doors = {}
+
+    for i = 1, #doorIds do
+        doors[doorIds[i].id] = exports.ox_doorlock:getDoor(doorIds[i].id)
+    end
+
+    local groupBoss = property.group and #GlobalState[('group.%s'):format(property.group)].grades
+    local doorPermissions = {}
+
+    for i = 1, #property.permissions do
+        local level = property.permissions[i]
+
+        if i == 1 then
+            for id in pairs(doors) do
+                doorPermissions[id] = {
+                    characters = {},
+                    groups = {}
+                }
+
+                if property.owner then
+                    doorPermissions[id].characters[property.owner] = true
+                end
+
+                if property.group then
+                    doorPermissions[id].groups[property.group] = groupBoss
+                end
+            end
+        end
+
+        for id in pairs(i == 1 and doors or level.doors) do
+            for k, v in pairs(level) do
+                if k == 'groups' then
+                    for group, grade in pairs(v) do
+                        if not doorPermissions[id].groups[group] or (doorPermissions[id].groups[group] and doorPermissions[id].groups[group] > grade) then
+                            doorPermissions[id].groups[group] = grade
+                        end
+                    end
+                elseif k == 'players' then
+                    for player in pairs(v) do
+                        doorPermissions[id].characters[tonumber(player)] = true
+                    end
+                end
+            end
+        end
+    end
+
+    for id, perms in pairs(doorPermissions) do
+        local characters = {}
+
+        for character in pairs(perms.characters) do
+            characters[#characters + 1] = character
+        end
+
+        perms.characters = characters
+
+        if doors[id].characters then
+            table.sort(perms.characters, sort)
+            table.sort(doors[id].characters, sort)
+        end
+
+        if not table.matches(perms.characters, doors[id].characters) or not table.matches(perms.groups, doors[id].groups) then
+            exports.ox_doorlock:editDoor(id, perms)
+        end
+    end
 end
 
 ---@param property OxPropertyObject
@@ -54,6 +134,7 @@ local function updatePermissionLevel(property, data)
 
     if data.level == 1 then
         data.permissions.components = nil
+        data.permissions.doors = nil
     end
 
     for k, v in pairs(data.permissions) do
@@ -140,7 +221,7 @@ lib.callback.register('ox_property:management', function(source, action, data)
     end
 
     if action == 'get_data' then
-        return getManagementData(Ox.GetPlayer(source) --[[@as OxPlayer]])
+        return getManagementData(data.property, Ox.GetPlayer(source) --[[@as OxPlayer]])
     end
 
     local property = Properties[data.property]

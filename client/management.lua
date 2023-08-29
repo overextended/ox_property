@@ -9,6 +9,8 @@ local function updatePermissionData(selected, secondary, args)
         permissionData[args.section][args.id] = secondary
     elseif args.section == 'everyone' then
         permissionData[args.section] = secondary
+    elseif args.section == 'doors' then
+        permissionData[args.section][args.id] = secondary
     else
         permissionData[args.section][args.id] = secondary - 1
     end
@@ -34,7 +36,7 @@ RegisterComponentAction('management', function(component)
 
     local property = Properties[component.property]
     local variables = PropertyVariables[property.name]
-    local values = {'Edit Access', 'Edit Members', 'Delete Level'}
+    local values = {'Edit Component Access', 'Edit Door Access', 'Edit Members', 'Delete Level'}
     local options = {
         {
             label = ('Owner: %s'):format(variables.ownerName or 'None'),
@@ -71,7 +73,7 @@ RegisterComponentAction('management', function(component)
                     {label = ('Save Level %s'):format(level)}
                 }
 
-                if level == 1 and scrollIndex ~= 2 then
+                if level == 1 and scrollIndex ~= 3 then
                     lib.notify({title = 'Action not possible for this permission level', type = 'error'})
                     lib.showMenu('component_menu')
                     return
@@ -92,6 +94,20 @@ RegisterComponentAction('management', function(component)
                         }
                     end
                 elseif scrollIndex == 2 then
+                    for i = 1, #displayData.doors do
+                        local door = displayData.doors[i]
+
+                        options[#options + 1] = {
+                            label = door.name:gsub(property.name, ''),
+                            checked = permissionLevel.doors and permissionLevel.doors[door.id] or false,
+                            close = false,
+                            args = {
+                                section = 'doors',
+                                id = door.id
+                            }
+                        }
+                    end
+                elseif scrollIndex == 3 then
                     options[#options + 1] = {
                         label = 'Everyone',
                         checked = permissionLevel.everyone or false,
@@ -127,7 +143,7 @@ RegisterComponentAction('management', function(component)
                             }
                         }
                     end
-                elseif scrollIndex == 3 then
+                elseif scrollIndex == 4 then
                     local delete = lib.alertDialog({
                         header = 'Please Confirm',
                         content = 'Are you sure you want to delete this permission level?',
@@ -259,14 +275,39 @@ RegisterComponentAction('management', function(component)
                 end
 
                 lib.registerMenu({
-                    id = 'new_level_access',
-                    title = 'Set Access',
+                    id = 'new_level_components',
+                    title = 'Set Component Access',
                     options = options,
                     onSideScroll = updatePermissionData,
                     onClose = onClose
                 },
                 function(selected, scrollIndex, args)
-                    if not scrollIndex then
+                    local options = {
+                        {label = ('Continue Level %s'):format(level)}
+                    }
+                    for i = 1, #displayData.doors do
+                        local door = displayData.doors[i]
+
+                        options[#options + 1] = {
+                            label = door.name,
+                            checked = false,
+                            close = false,
+                            args = {
+                                section = 'doors',
+                                id = door.id
+                            }
+                        }
+                    end
+
+                    lib.registerMenu({
+                        id = 'new_level_doors',
+                        title = 'Set Door Access',
+                        options = options,
+                        onSideScroll = updatePermissionData,
+                        onCheck = updatePermissionData,
+                        onClose = onClose
+                    },
+                    function(selected, scrollIndex, args)
                         local options = {
                             {label = ('Finish Level %s'):format(level)}
                         }
@@ -315,28 +356,28 @@ RegisterComponentAction('management', function(component)
                             onClose = onClose
                         },
                         function(selected, scrollIndex, args)
-                            if not scrollIndex then
-                                local response, msg = lib.callback.await('ox_property:management', 100, 'update_permission', {
-                                    property = component.property,
-                                    componentId = component.componentId,
-                                    permissions = permissionData,
-                                    level = level
-                                })
+                            local response, msg = lib.callback.await('ox_property:management', 100, 'update_permission', {
+                                property = component.property,
+                                componentId = component.componentId,
+                                permissions = permissionData,
+                                level = level
+                            })
 
-                                if msg then
-                                    lib.notify({title = msg, type = response and 'success' or 'error'})
-                                end
+                            if msg then
+                                lib.notify({title = msg, type = response and 'success' or 'error'})
                             end
                         end)
 
                         lib.showMenu('new_level_members')
-                    end
+                    end)
+
+                    lib.showMenu('new_level_doors')
                 end)
 
-                lib.showMenu('new_level_access')
+                lib.showMenu('new_level_components')
             end
         end
     }, 'listMenu'
 end, {'All access'})
 
-RegisterMenu({'edit_level', 'set_property_value', 'new_level_access', 'new_level_members'}, 'listMenu')
+RegisterMenu({'edit_level', 'set_property_value', 'new_level_components', 'new_level_doors', 'new_level_members'}, 'listMenu')
