@@ -156,7 +156,7 @@ local function updatePermissionLevel(property, data)
         updateProperty(property)
     end
 
-    return true, 'permission_level_updated'
+    return true, locale('permission_level_updated')
 end
 
 ---@param property OxPropertyObject
@@ -164,7 +164,7 @@ end
 ---@return boolean response, string msg
 local function deletePermissionLevel(property, level)
     if level == 1 then
-        return false, 'action_not_allowed'
+        return false, locale("action_not_allowed")
     end
 
     table.remove(property.permissions, level)
@@ -173,7 +173,7 @@ local function deletePermissionLevel(property, level)
 
     updateProperty(property)
 
-    return true, 'permission_level_deleted'
+    return true, locale("permission_level_deleted")
 end
 
 ---@param property OxPropertyObject
@@ -206,7 +206,7 @@ local function setPropertyValue(property, data)
 
     updateProperty(property)
 
-    return true, 'property_value_set'
+    return true, locale("property_value_set")
 end
 
 ---@param source integer
@@ -217,7 +217,7 @@ lib.callback.register('ox_property:management', function(source, action, data)
     local permitted, msg = IsPermitted(source, data.property, data.componentId, 'management')
 
     if not permitted or permitted > 1 then
-        return false, msg or 'not_permitted'
+        return false, msg or locale("not_permitted")
     end
 
     if action == 'get_data' then
@@ -233,5 +233,5 @@ lib.callback.register('ox_property:management', function(source, action, data)
         return setPropertyValue(property, data)
     end
 
-    return false, 'invalid_action'
+    return false, locale("invalid_action")
 end)

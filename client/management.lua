@@ -36,27 +36,27 @@ RegisterComponentAction('management', function(component)
 
     local property = Properties[component.property]
     local variables = PropertyVariables[property.name]
-    local values = {'Edit Component Access', 'Edit Door Access', 'Edit Members', 'Delete Level'}
+    local values = {locale("edit_componet_access"), locale("edit_door_acces"), locale("edit_menbers"), locale("delete_level")}
     local options = {
         {
-            label = ('Owner: %s'):format(variables.ownerName or 'None'),
-            description = 'Set Property Owner'
+            label = locale("owner", variables.ownerName or locale("none")),
+            description = locale("set_property_owner")
         },
         {
-            label = ('Group: %s'):format(variables.groupName or 'None'),
-            description = 'Set Property Group'
+            label = locale("group", variables.ownerName or locale("none")),
+            description = locale("set_property_group")
         }
     }
 
     for i = 1, #variables.permissions do
         options[#options + 1] = {
-            label = ('Level %s'):format(i),
+            label = locale("level",i),
             values = values
         }
     end
 
     options[#options + 1] = {
-        label = 'Create New Level',
+        label = locale("create_new_level"),
     }
 
     return {
@@ -66,15 +66,15 @@ RegisterComponentAction('management', function(component)
 
             local level = scrollIndex and selected - 2 or #variables.permissions + 1
             local permissionLevel = variables.permissions[level]
-            local title = values[scrollIndex] or 'New Level'
+            local title = values[scrollIndex] or locale("new_level")
 
             if scrollIndex then
                 local options = {
-                    {label = ('Save Level %s'):format(level)}
+                    {label = locale("save_level",level)}
                 }
 
                 if level == 1 and scrollIndex ~= 3 then
-                    lib.notify({title = 'Action not possible for this permission level', type = 'error'})
+                    lib.notify({title =locale("action_not_possible_for_level"), type = 'error'})
                     lib.showMenu('component_menu')
                     return
                 elseif scrollIndex == 1 then
@@ -85,7 +85,7 @@ RegisterComponentAction('management', function(component)
                             label = component.name,
                             values = {'None', table.unpack(Permissions[component.type])},
                             defaultIndex = permissionLevel.components and permissionLevel.components[i] and permissionLevel.components[i] + 1 or 1,
-                            description = ('Type: %s'):format(component.type:gsub('^%l', string.upper)),
+                            description = locale("type", component.type:gsub('^%l', string.upper)),
                             close = false,
                             args = {
                                 section = 'components',
@@ -109,7 +109,7 @@ RegisterComponentAction('management', function(component)
                     end
                 elseif scrollIndex == 3 then
                     options[#options + 1] = {
-                        label = 'Everyone',
+                        label = locale("everyone"),
                         checked = permissionLevel.everyone or false,
                         close = false,
                         args = {section = 'everyone'}
@@ -145,8 +145,8 @@ RegisterComponentAction('management', function(component)
                     end
                 elseif scrollIndex == 4 then
                     local delete = lib.alertDialog({
-                        header = 'Please Confirm',
-                        content = 'Are you sure you want to delete this permission level?',
+                        header = locale("please_confirm"),
+                        content = locale("are_you_sure_delete_permission_level"),
                         centered = true,
                         cancel = true
                     })
@@ -228,14 +228,14 @@ RegisterComponentAction('management', function(component)
 
                 lib.registerMenu({
                     id = 'set_property_value',
-                    title = ('Set Property %s'):format(value:gsub('^%l', string.upper)),
+                    title = locale("set_property",value:gsub('^%l', string.upper)),
                     options = options,
                     onClose = onClose
                 },
                 function(selected, scrollIndex, args)
                     local setValue = lib.alertDialog({
-                        header = 'Please Confirm',
-                        content = ('Are you sure you want to set the property %s to %s'):format(value, args.label),
+                        header = locale("please_confirm"),
+                        content = locale("are_you_sure_set_property", value, args.label),
                         centered = true,
                         cancel = true
                     })
@@ -257,7 +257,7 @@ RegisterComponentAction('management', function(component)
                 lib.showMenu('set_property_value')
             else
                 local options = {
-                    {label = ('Continue Level %s'):format(level)}
+                    {label = locale("continue_level", level)}
                 }
                 for i = 1, #property.components do
                     local component = property.components[i]
@@ -265,7 +265,7 @@ RegisterComponentAction('management', function(component)
                     options[#options + 1] = {
                         label = component.name,
                         values = {'None', table.unpack(Permissions[component.type])},
-                        description = ('Type: %s'):format(component.type:gsub('^%l', string.upper)),
+                        description = locale("type", component.type:gsub('^%l', string.upper)),
                         close = false,
                         args = {
                             section = 'components',
@@ -276,14 +276,14 @@ RegisterComponentAction('management', function(component)
 
                 lib.registerMenu({
                     id = 'new_level_components',
-                    title = 'Set Component Access',
+                    title = locale("set_component_access"),
                     options = options,
                     onSideScroll = updatePermissionData,
                     onClose = onClose
                 },
                 function(selected, scrollIndex, args)
                     local options = {
-                        {label = ('Continue Level %s'):format(level)}
+                        {label = locale("continue_level", level)}
                     }
                     for i = 1, #displayData.doors do
                         local door = displayData.doors[i]
@@ -301,7 +301,7 @@ RegisterComponentAction('management', function(component)
 
                     lib.registerMenu({
                         id = 'new_level_doors',
-                        title = 'Set Door Access',
+                        title = locale("set_door_access"),
                         options = options,
                         onSideScroll = updatePermissionData,
                         onCheck = updatePermissionData,
@@ -309,11 +309,11 @@ RegisterComponentAction('management', function(component)
                     },
                     function(selected, scrollIndex, args)
                         local options = {
-                            {label = ('Finish Level %s'):format(level)}
+                            {label = locale ("finish_level", level)}
                         }
 
                         options[#options + 1] = {
-                            label = 'Everyone',
+                            label = locale("everyone"),
                             checked = false,
                             close = false,
                             args = {section = 'everyone'}
@@ -349,7 +349,7 @@ RegisterComponentAction('management', function(component)
 
                         lib.registerMenu({
                             id = 'new_level_members',
-                            title = 'Set Members',
+                            title = locale("set_members"),
                             options = options,
                             onSideScroll = updatePermissionData,
                             onCheck = updatePermissionData,

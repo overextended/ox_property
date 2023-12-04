@@ -37,9 +37,9 @@ local function setVehicleValues(player, data)
     local vehicle = MySQL.single.await('SELECT JSON_VALUE(data, "$.label") AS `label`, `group`, `stored` FROM `vehicles` WHERE `id` = ? AND `owner` = ?', {data.id, player.charId})
 
     if not vehicle then
-        return false, 'vehicle_not_found'
+        return false, locale('vehicle_not_found')
     elseif vehicle.stored ~= ('%s:%s'):format(data.property, data.componentId) then
-        return false, 'component_mismatch'
+        return false, locale("component_mismatch")
     end
 
     for key, value in pairs(data.values) do
@@ -51,8 +51,7 @@ local function setVehicleValues(player, data)
             end
         end
     end
-
-    return true, 'vehicle_updated'
+    return true, locale("vehicle_updated")
 end
 exports('setVehicleValues', setVehicleValues)
 
@@ -98,14 +97,14 @@ local function storeVehicle(player, component, properties)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player --[[@as OxPlayer]]
     local vehicle = Ox.GetVehicle(GetVehiclePedIsIn(player.ped, false))
     if not vehicle then
-        return false, 'vehicle_not_found'
+        return false, locale("vehicle_not_found")
     elseif player.charId ~= vehicle.owner or (vehicle.group and not player.hasGroup(vehicle.group)) then
-        return false, 'not_vehicle_owner'
+        return false, locale("not_vehicle_owner")
     end
 
     vehicle.data = vehicleData[vehicle.model]
     if not component.vehicles[vehicle.data.type] then
-        return false, 'vehicle_requirements_not_met'
+        return false, locale("vehicle_requirements_not_met")
     end
 
     clearVehicleOfPassengers({entity = vehicle.entity, seats = vehicle.data.seats})
@@ -113,7 +112,7 @@ local function storeVehicle(player, component, properties)
     vehicle.set('properties', properties)
     vehicle.setStored(('%s:%s'):format(component.property, component.componentId), true)
 
-    return true, 'vehicle_stored'
+    return true, locale("vehicle_stored")
 end
 exports('storeVehicle', storeVehicle)
 
@@ -124,24 +123,23 @@ exports('storeVehicle', storeVehicle)
 local function retrieveVehicle(player, component, id)
     player = type(player) == 'number' and Ox.GetPlayer(player) or player --[[@as OxPlayer]]
     local vehicle = MySQL.single.await('SELECT `model`, `stored` FROM `vehicles` WHERE `id` = ? AND (`owner` = ? OR `group` IN (?))', {id, player.charId, getPlayerGroupsArray(player)})
-
     if not vehicle then
-        return false, 'vehicle_not_found'
+        return false, locale("vehicle_not_found")
     elseif vehicle.stored ~= ('%s:%s'):format(component.property, component.componentId) then
-        return false, 'component_mismatch'
+        return false, locale("component_mismatch")
     end
 
     local spawn = lib.callback.await('ox_property:findClearSpawn', player.source)
 
     if not spawn then
-        return false, 'spawn_not_found'
+        return false, locale("spawn_not_found")
     elseif not component.vehicles[vehicleData[vehicle.model].type] then
-        return false, 'vehicle_requirements_not_met'
+        return false, locale("vehicle_requirements_not_met")
     end
 
     Ox.CreateVehicle(id, spawn.coords, spawn.heading)
 
-    return true, 'vehicle_retrieved'
+    return true, locale("vehicle_retrieved")
 end
 exports('retrieveVehicle', retrieveVehicle)
 
@@ -158,13 +156,13 @@ local function moveVehicle(player, property, component, id)
         local veh = vehicles[i]
         if veh.id == id then
             if veh.stored == 'displayed' then
-                return false, 'vehicle_cannot_be_modified_while_displayed'
+                return false, locale("vehicle_cannot_be_modified_while_displayed")
             end
 
             local seats = vehicleData[veh.model].seats
             for j = -1, seats - 1 do
                 if GetPedInVehicleSeat(veh.entity, j) ~= 0 then
-                    return false, 'vehicle_in_use'
+                    return false, locale("vehicle_in_use")
                 end
             end
 
@@ -178,9 +176,9 @@ local function moveVehicle(player, property, component, id)
         vehicle = MySQL.single.await('SELECT `model`, `stored` FROM `vehicles` WHERE `id` = ? AND (`owner` = ? OR `group` IN (?))', {id, player.charId, getPlayerGroupsArray(player)})
 
         if not vehicle then
-            return false, 'vehicle_not_found'
+            return false, locale("vehicle_not_found")
         elseif vehicle.stored == 'displayed' then
-            return false, 'vehicle_cannot_be_modified_while_displayed'
+            return false, locale("vehicle_cannot_be_modified_while_displayed")
         end
 
         recover = not vehicle.stored or not vehicle.stored:find(':')
@@ -189,13 +187,13 @@ local function moveVehicle(player, property, component, id)
 
     local vehData = vehicleData[vehicle.model]
     if not vehData then
-        return false, 'model_not_found'
+        return false, locale("model_not_found")
     elseif not component.vehicles[vehData.type] then
-        return false, 'vehicle_requirements_not_met'
+        return false, locale("vehicle_requirements_not_met")
     end
 
     if property.owner ~= player.charId then
-        local response, msg = Transaction(player.source, (recover and '%s Recovery' or '%s Move'):format(vehData.name), {
+        local response, msg = Transaction(player.source, (recover and '%s '..locale("recover") or '%s '..locale("move")):format(vehData.name), {
             amount = recover and 1000 or 500,
             from = {name = player.name, identifier = player.charId},
             to = {name = property.groupName or property.ownerName, identifier = property.group or property.owner}
@@ -212,7 +210,7 @@ local function moveVehicle(player, property, component, id)
         vehicle.setStored(('%s:%s'):format(property.name, component.componentId), true)
     end
 
-    return true, recover and 'vehicle_recovered' or 'vehicle_moved'
+    return true, recover and locale("vehicle_recovered") or locale("vehicle_moved")
 end
 
 ---@param source integer
@@ -224,7 +222,7 @@ lib.callback.register('ox_property:parking', function(source, action, data)
     local permitted, msg = IsPermitted(player, data.property, data.componentId, 'parking')
 
     if not permitted or permitted > 1 then
-        return false, msg or 'not_permitted'
+        return false, msg or locale("not_permitted")
     end
 
     if action == 'get_vehicles' then
@@ -243,5 +241,5 @@ lib.callback.register('ox_property:parking', function(source, action, data)
         return moveVehicle(player, property, component, data.id)
     end
 
-    return false, 'invalid_action'
+    return false, locale("invalid_action")
 end)
