@@ -56,7 +56,7 @@ RegisterComponentAction('wardrobe', function(component)
     }
 
     return {options = options}, 'contextMenu'
-end, {'All access'})
+end, {locale('all_access')})
 
 local function checkCurrentZone(data)
     if CurrentZone?.property == data.property and CurrentZone?.componentId == data.componentId then return true end

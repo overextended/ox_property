@@ -227,7 +227,7 @@ RegisterComponentAction('parking', function(component)
     }
 
     return {options = options}, 'contextMenu'
-end, {'All access'})
+end, {locale('all_access')})
 
 RegisterMenu({'vehicle_list', 'manage_vehicle'}, 'contextMenu')
 

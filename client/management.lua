@@ -378,6 +378,6 @@ RegisterComponentAction('management', function(component)
             end
         end
     }, 'listMenu'
-end, {'All access'})
+end, {locale('all_access')})
 
 RegisterMenu({'edit_level', 'set_property_value', 'new_level_components', 'new_level_doors', 'new_level_members'}, 'listMenu')
