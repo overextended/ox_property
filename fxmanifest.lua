@@ -45,6 +45,7 @@ ox_libs {
 }
 
 files {
+    'locales/*.json',
     '/data/**'
 }
 

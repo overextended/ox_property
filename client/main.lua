@@ -8,6 +8,8 @@ CurrentZone = nil
 ---@type table<string, function>
 local componentActions = {}
 
+lib.locale()
+
 ---@param componentType string
 ---@param action function
 ---@param actionPermissions string[]
@@ -19,7 +21,7 @@ exports('registerComponentAction', RegisterComponentAction)
 
 RegisterComponentAction('stash', function(component)
     return exports.ox_inventory:openInventory('stash', component.name)
-end, {'All access'})
+end, {locale('all_access')})
 
 local menus = {
     contextMenu = {
@@ -50,6 +52,7 @@ local function setBlipVariables(blip, property)
     local variables = PropertyVariables[property]
     SetBlipColour(blip, variables.colour)
     SetBlipShrink(blip, true)
+    SetBlipDisplay(blip, 4)
 
     if variables.owner ~= player.charId and not (variables.group and player.groups[variables.group]) then
         SetBlipAsShortRange(blip, true)
@@ -301,14 +304,13 @@ local function isPermitted(property, componentId)
         for i = 1, #variables.permissions do
             local level = variables.permissions[i]
             local access = i == 1 and 1 or level.components[componentId]
-
             if access and (level.everyone or (level.players and level.players[player.charId]) or player.hasGroup(level.groups)) then
                 return access
             end
         end
     end
 
-    lib.notify({title = 'Permission Denied', type = 'error'})
+    lib.notify({title = locale("permissions_deined"), type = 'error'})
     return false
 end
 exports('isPermitted', isPermitted)

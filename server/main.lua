@@ -1,5 +1,6 @@
 ---@type table<string, OxPropertyObject>
 Properties = {}
+lib.locale()
 
 exports('getPropertyData', function(property, componentId)
     return componentId and Properties[property].components[componentId] or Properties[property]
@@ -247,6 +248,6 @@ function Transaction(source, msg, data)
         return true
     end
 
-    return false, 'transaction_failed'
+    return false, locale('transaction_failed')
 end
 exports('transaction', Transaction)

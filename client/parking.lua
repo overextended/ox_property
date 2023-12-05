@@ -21,7 +21,7 @@ local function manageVehicle(data)
             }
         },
         {
-            title = 'Update Values',
+            title = locale("update_values"),
             disabled = data.vehicle.owner ~= player.charId,
             onSelect = function(args)
                 local groupTable = player.groups
@@ -34,18 +34,18 @@ local function manageVehicle(data)
                 local options = {
                     {
                         type = 'input',
-                        label = 'Label',
+                        label = locale("label_label"),
                         default = data.vehicle.label
                     },
                     {
                         type = 'select',
-                        label = 'Group',
+                        label = locale("label_group"),
                         default = data.vehicle.group,
                         options = groups
                     }
                 }
 
-                local input = lib.inputDialog('Update Vehicle Values', options)
+                local input = lib.inputDialog(locale("update_vehicle_values"), options)
 
                 if input then
                     if not data.vehicle.label and input[1] == "" then input[1] = nil end
@@ -72,14 +72,13 @@ local function manageVehicle(data)
             end,
         },
         {
-            title = 'Retrieve',
+            title = locale("retrive"),
             onSelect = function(args)
                 local response, msg = lib.callback.await('ox_property:parking', 100, 'retrieve_vehicle', {
                     property = data.component.property,
                     componentId = data.component.componentId,
                     id = data.vehicle.id
                 })
-
                 if msg then
                     lib.notify({title = msg, type = response and 'success' or 'error'})
                 end
@@ -89,7 +88,7 @@ local function manageVehicle(data)
 
     lib.registerContext({
         id = 'manage_vehicle',
-        title = 'Manage Vehicle',
+        title = locale("manage_vehicle"),
         menu = 'vehicle_list',
         options = options
     })
@@ -112,15 +111,16 @@ local function vehicleList(data)
                 ['Location'] = vehicle.location
             },
             onSelect = function(args)
-                if args.action == 'Manage' then
+                if args.action == locale("manage") then
                     manageVehicle({component = data.component, vehicle = vehicle})
                 else
-                    local response, msg = lib.callback.await('ox_property:parking', 100, args.action == 'Retrieve' and 'retrieve_vehicle' or 'move_vehicle', {
+                    print(json.encode(args,{indent=true}))
+                    local response, msg = lib.callback.await('ox_property:parking', 100, args.action == locale('retrive') and 'retrieve_vehicle' or 'move_vehicle', {
                         property = data.component.property,
                         componentId = data.component.componentId,
                         id = args.id
                     })
-
+                    
                     if msg then
                         lib.notify({title = msg, type = response and 'success' or 'error'})
                     end
@@ -135,7 +135,7 @@ local function vehicleList(data)
 
     lib.registerContext({
         id = 'vehicle_list',
-        title = data.componentOnly and ('%s - %s - Vehicles'):format(Properties[data.component.property].label, data.component.name) or 'All Vehicles',
+        title = data.componentOnly and locale("vehicle_list", Properties[data.component.property].label, data.component.name) or locale("all_vehicles"),
         menu = 'component_menu',
         options = options
     })
@@ -157,7 +157,7 @@ RegisterComponentAction('parking', function(component)
 
     if cache.seat == -1 then
         options[#options + 1] = {
-            title = 'Store Vehicle',
+            title = locale("store_vehicle"),
             onSelect = function()
                 if cache.seat == -1 then
                     local response, msg = lib.callback.await('ox_property:parking', 100, 'store_vehicle', {
@@ -170,7 +170,7 @@ RegisterComponentAction('parking', function(component)
                         lib.notify({title = msg, type = response and 'success' or 'error'})
                     end
                 else
-                    lib.notify({title = "You are not in the driver's seat", type = 'error'})
+                    lib.notify({title = locale("are_you_not_driver_seat"), type = 'error'})
                 end
             end
         }
@@ -182,13 +182,13 @@ RegisterComponentAction('parking', function(component)
     for i = 1, len do
         local vehicle = vehicles[i]
         vehicle.name = vehicleNames[vehicle.model]
-        vehicle.location = 'Unknown'
-        vehicle.action = 'Recover'
+        vehicle.location = locale("unknown")
+        vehicle.action = locale("recover")
 
         if vehicle.stored and vehicle.stored:find(':') then
             if vehicle.stored == currentComponent then
-                vehicle.location = 'Current location'
-                vehicle.action = vehicle.owner == player.charId and 'Manage' or 'Retrieve'
+                vehicle.location = locale("current_location")
+                vehicle.action = vehicle.owner == player.charId and locale("manage") or locale("retrive")
                 componentVehicles[#componentVehicles + 1] = vehicle
             else
                 local propertyName, componentId = string.strsplit(':', vehicle.stored)
@@ -204,8 +204,8 @@ RegisterComponentAction('parking', function(component)
     end
 
     options[#options + 1] = {
-        title = 'Open Location',
-        description = 'View your vehicles at this location',
+        title = locale("open_location"),
+        description = locale("view_vehicles_at_location"),
         metadata = {['Vehicles'] = #componentVehicles},
         onSelect = #componentVehicles > 0 and vehicleList,
         args = {
@@ -216,8 +216,8 @@ RegisterComponentAction('parking', function(component)
     }
 
     options[#options + 1] = {
-        title = 'All Vehicles',
-        description = 'View all your vehicles',
+        title = locale("all_vehicles"),
+        description = locale("view_all_vehicles"),
         metadata = {['Vehicles'] = len},
         onSelect = len > 0 and vehicleList,
         args = {
@@ -227,7 +227,7 @@ RegisterComponentAction('parking', function(component)
     }
 
     return {options = options}, 'contextMenu'
-end, {'All access'})
+end, {locale('all_access')})
 
 RegisterMenu({'vehicle_list', 'manage_vehicle'}, 'contextMenu')
 

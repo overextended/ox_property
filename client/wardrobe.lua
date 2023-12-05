@@ -14,7 +14,7 @@ RegisterComponentAction('wardrobe', function(component)
 
     if component.outfits then
         options[#options + 1] = {
-            title = 'Zone wardrobe',
+            title = locale("zone_wardrobe"),
             event = 'ox_property:outfits',
             args = {
                 property = component.property,
@@ -25,7 +25,7 @@ RegisterComponentAction('wardrobe', function(component)
         }
 
         options[#options + 1] = {
-            title = 'Save new zone outfit',
+            title = locale("save_new_zone_outfit"),
             arrow = true,
             event = 'ox_property:saveOutfit',
             args = {
@@ -39,7 +39,7 @@ RegisterComponentAction('wardrobe', function(component)
     end
 
     options[#options + 1] = {
-        title = 'Personal wardrobe',
+        title = locale("personal_wardrobe"),
         event = 'ox_property:outfits',
         args = {
             property = component.property,
@@ -49,19 +49,19 @@ RegisterComponentAction('wardrobe', function(component)
     }
 
     options[#options + 1] = {
-        title = 'Save new personal outfit',
+        title = locale("save_new_personal_outfit"),
         arrow = true,
         event = 'ox_appearance:saveOutfit',
         args = {slot = 'new', name = ''}
     }
 
     return {options = options}, 'contextMenu'
-end, {'All access'})
+end, {locale('all_access')})
 
 local function checkCurrentZone(data)
     if CurrentZone?.property == data.property and CurrentZone?.componentId == data.componentId then return true end
 
-    lib.notify({title = 'Zone Mismatch', type = 'error'})
+    lib.notify({title = locale("zone_mismatch"), type = 'error'})
     return false
 end
 exports('checkCurrentZone', checkCurrentZone)
@@ -86,7 +86,7 @@ RegisterNetEvent('ox_property:outfits', function(data)
 
     local menu = {
         id = 'zone_wardrobe',
-        title = data.zoneOutfits and ('%s - %s - Wardrobe'):format(CurrentZone.property, CurrentZone.name) or 'Personal Wardrobe',
+        title = data.zoneOutfits and locale("wardrobe_list", CurrentZone.property, CurrentZone.name) or locale("personal_wardrobe"),
         menu = 'component_menu',
         options = options
     }
@@ -104,7 +104,7 @@ AddEventHandler('ox_property:setOutfit', function(data)
         menu = 'zone_wardrobe',
         options = {
             {
-                title = 'Wear',
+                title = locale("wear"),
                 onSelect = function(args)
                     local data, msg = lib.callback.await('ox_property:wardrobe', 100, 'apply_outfit', {
                         property = args.property,
@@ -126,7 +126,7 @@ AddEventHandler('ox_property:setOutfit', function(data)
                 }
             },
             {
-                title = 'Update',
+                title = locale("update"),
                 event = 'ox_property:saveOutfit',
                 args = {
                     property = CurrentZone.property,
@@ -164,7 +164,7 @@ AddEventHandler('ox_property:saveOutfit', function(data)
             TriggerServerEvent('ox_property:saveOutfit', data, appearance)
         end
     else
-        local input = lib.inputDialog(('Update %s'):format(data.name), {'Outfit Name (leave blank to delete)'})
+        local input = lib.inputDialog(locale("diaolog_update_title",data.name), {locale("dialog_update_input")})
 
         local appearance = exports['fivem-appearance']:getPedAppearance(cache.ped)
         data.outfitNames[data.slot] = input?[1]
